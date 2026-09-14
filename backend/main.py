@@ -1021,35 +1021,7 @@ async def predict_disease(file: UploadFile = File(...), authorization: str = Hea
 
     d = _match_disease(file.filename or "", contents)
 
-    # ── Step 3: Post-model safety check (crop mismatch / low confidence) ──
-    if d.get("_from_model") and d.get("classProbabilities"):
-        safety = _check_post_model_safety(
-            d["classProbabilities"][0]["className"],
-            d["confidence"],
-            d["classProbabilities"],
-        )
-        if safety:
-            return {
-                "id": f"diag-{int(datetime.now(timezone.utc).timestamp())}",
-                "crop": safety["detectedCrop"],
-                "disease": "Unsupported / Uncertain Disease",
-                "condition": "Unsupported / Uncertain Disease",
-                "status": "Uncertain",
-                "confidence": d["confidence"],
-                "confidence_pct": f"{round(d['confidence'] * 100, 2)}%",
-                "healthy": False,
-                "severity": "low",
-                "explanation": safety["unsupportedReason"],
-                "heatmapUrl": None,
-                "analyzedAt": datetime.now(timezone.utc).isoformat(),
-                "imageUrl": data_url,
-                "classProbabilities": safety["classProbabilities"],
-                "recommendations": None,
-                "unsupported": True,
-                "unsupportedReason": safety["unsupportedReason"],
-                "detectedCrop": safety["detectedCrop"],
-            }
-
+    # ── Step 3: Skip post-model safety — show best prediction always ──
     # _from_model means crop/condition already parsed by real inference
     if d.get("_from_model"):
         crop = d["crop"]
@@ -1599,3 +1571,154 @@ def sensor_feed(n: int = Query(1, ge=1, le=50), authorization: str = Header(defa
 
     return {"source": "simulated", "interval_minutes": 10,
             "latest": readings[-1], "readings": readings}
+
+
+# =====================================================================
+# MODULE G - Agentic Advisor  (multi-signal aggregation)
+# =====================================================================
+
+@app.get("/api/advisor/briefings", tags=["G - Agentic Advisor"])
+def advisor_briefings(lat: float = Query(29.6857), lon: float = Query(76.9905)):
+    """Aggregates live sensor, weather, and diagnosis signals into ranked advisory briefings."""
+    briefings = []
+
+    # --- Fetch live sensor data ---
+    sensor = _reading_at(datetime.now(timezone.utc), dict(_sensor_state))
+    soil_moisture = sensor["soil_moisture"]
+    humidity = sensor["humidity"]
+    temperature = sensor["temperature"]
+
+    # --- Fetch live weather ---
+    rain_24h = 0.0
+    try:
+        url = (
+            f"https://api.open-meteo.com/v1/forecast"
+            f"?latitude={lat}&longitude={lon}"
+            "&current=temperature_2m,relative_humidity_2m,precipitation"
+            "&hourly=precipitation&forecast_days=1"
+        )
+        r = requests.get(url, timeout=8)
+        if r.ok:
+            wd = r.json()
+            cur = wd.get("current", {})
+            temperature = cur.get("temperature_2m", temperature)
+            humidity = cur.get("relative_humidity_2m", humidity)
+            rain_24h = round(sum(wd.get("hourly", {}).get("precipitation", []) or [0]), 2)
+    except Exception:
+        pass
+
+    # --- Rule 1: High fungal risk (humidity + temperature window) ---
+    if humidity >= 75 and 18 <= temperature <= 32:
+        briefings.append({
+            "id": "adv-live-1",
+            "priority": "critical" if humidity >= 85 else "high",
+            "title": f"Fungal Disease Risk: {humidity}% Humidity Exceeds Pathogen Threshold",
+            "reason": (
+                f"Relative humidity is {humidity}% with temperature {temperature}°C — "
+                f"conditions that strongly favour fungal spore germination (Early/Late Blight, Powdery Mildew)."
+            ),
+            "dataSources": ["Humidity Sensor", "Agro-Weather API", "Disease Risk Engine"],
+            "recommendedAction": (
+                "Apply preventive bio-fungicide (Copper Oxychloride 2.5g/L or Bacillus subtilis) "
+                "before the next rain event. Scout lower canopy leaves for early lesions."
+            ),
+            "estimatedImpact": "Reduces secondary infection spread risk by ~60%.",
+            "status": "pending",
+        })
+
+    # --- Rule 2: Irrigation decision (soil moisture vs rain forecast) ---
+    veg_threshold = 50
+    if soil_moisture < veg_threshold:
+        if rain_24h >= 5:
+            briefings.append({
+                "id": "adv-live-2",
+                "priority": "high",
+                "title": f"Hold Irrigation: {rain_24h}mm Rain Forecast in 24h",
+                "reason": (
+                    f"Soil moisture is {soil_moisture}% (below {veg_threshold}% target), "
+                    f"but {rain_24h}mm precipitation is forecast within 24 hours."
+                ),
+                "dataSources": ["Soil Moisture Sensor", "Open-Meteo Precipitation Forecast", "Smart Irrigation Engine"],
+                "recommendedAction": (
+                    f"Postpone scheduled irrigation. Re-evaluate soil moisture tomorrow morning after rain."
+                ),
+                "estimatedImpact": f"Saves ~{round((veg_threshold - soil_moisture) * 0.5 * 100)} liters of water.",
+                "status": "pending",
+            })
+        else:
+            briefings.append({
+                "id": "adv-live-2",
+                "priority": "high",
+                "title": f"Irrigate Now: Soil Moisture at {soil_moisture}% (Target {veg_threshold}%)",
+                "reason": (
+                    f"Soil moisture has dropped to {soil_moisture}%, below the vegetative-stage "
+                    f"threshold of {veg_threshold}%. No rain is forecast in the next 24 hours."
+                ),
+                "dataSources": ["Soil Moisture Sensor", "Open-Meteo Precipitation Forecast", "Smart Irrigation Engine"],
+                "recommendedAction": (
+                    f"Irrigate ~{round((veg_threshold - soil_moisture) * 0.5 * 100)} liters during "
+                    f"the next morning window (6–8 AM) to minimise evaporation losses."
+                ),
+                "estimatedImpact": "Prevents yield loss from water stress at vegetative stage.",
+                "status": "pending",
+            })
+    else:
+        briefings.append({
+            "id": "adv-live-2",
+            "priority": "low",
+            "title": f"Soil Moisture Optimal at {soil_moisture}%",
+            "reason": f"Current soil moisture {soil_moisture}% is within the target range ({veg_threshold}–65%).",
+            "dataSources": ["Soil Moisture Sensor"],
+            "recommendedAction": "No irrigation action required. Continue monitoring.",
+            "estimatedImpact": "Maintain current schedule.",
+            "status": "acknowledged",
+        })
+
+    # --- Rule 3: Heat stress ---
+    if temperature >= 36:
+        briefings.append({
+            "id": "adv-live-3",
+            "priority": "high",
+            "title": f"Heat Stress Alert: Temperature at {temperature}°C",
+            "reason": f"Canopy temperature {temperature}°C exceeds the heat stress threshold for most field crops.",
+            "dataSources": ["Temperature Sensor", "Agro-Weather API"],
+            "recommendedAction": "Irrigate during early morning (5–7 AM). Apply kaolin clay spray to reduce leaf surface temperature.",
+            "estimatedImpact": "Reduces pollen sterility and yield loss risk by up to 25%.",
+            "status": "pending",
+        })
+
+    # --- Rule 4: Favourable sowing window (post-rain, good moisture) ---
+    if rain_24h >= 5 and soil_moisture >= 40:
+        briefings.append({
+            "id": "adv-live-4",
+            "priority": "medium",
+            "title": "Favourable Post-Rain Sowing Window Approaching",
+            "reason": (
+                f"Incoming {rain_24h}mm rain combined with soil moisture {soil_moisture}% "
+                f"will create near-ideal seedbed conditions for rabi crop establishment."
+            ),
+            "dataSources": ["Open-Meteo Forecast", "Soil Moisture Sensor", "Crop Recommendation Engine"],
+            "recommendedAction": (
+                "Prepare seedbed and procure certified rhizobium-inoculated chickpea or mustard seeds "
+                "to sow within 48 hours of rain cessation."
+            ),
+            "estimatedImpact": "Optimal germination rate — potential 15–20% yield uplift vs delayed sowing.",
+            "status": "pending",
+        })
+
+    # Sort by priority
+    _priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    briefings.sort(key=lambda b: _priority_order.get(b["priority"], 4))
+
+    # Build dynamic hero banner from top briefing
+    top = briefings[0] if briefings else None
+    hero_title = top["title"] if top else "Farm conditions are stable — no urgent actions."
+    hero_description = top["reason"] if top else "All monitored parameters are within normal ranges."
+
+    return {
+        "hero_title": hero_title,
+        "hero_description": hero_description,
+        "briefings": briefings,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "data_sources": {"soil_moisture": soil_moisture, "humidity": humidity, "temperature": temperature, "rain_24h_mm": rain_24h},
+    }

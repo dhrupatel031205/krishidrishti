@@ -20,9 +20,15 @@ import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 
 export default function AdvisorPage() {
   const [briefings, setBriefings] = useState<AdvisoryBriefing[]>([]);
+  const [heroTitle, setHeroTitle] = useState("Loading farm briefing...");
+  const [heroDescription, setHeroDescription] = useState("");
 
   useEffect(() => {
-    fetchAdvisoryBriefings().then(setBriefings);
+    fetchAdvisoryBriefings().then(({ briefings, heroTitle, heroDescription }) => {
+      setBriefings(briefings);
+      setHeroTitle(heroTitle);
+      setHeroDescription(heroDescription);
+    });
   }, []);
 
   const handleAcknowledge = (id: string) => {
@@ -65,7 +71,7 @@ export default function AdvisorPage() {
             <DownloadReportButton
               reportTitle="Agentic Advisor Briefings"
               getData={() => ({
-                dailyBriefing: "Prioritize Foliar Pathogen Containment Before Inbound Showers",
+                dailyBriefing: heroTitle,
                 recommendations: briefings.map((b) => ({
                   priority: b.priority,
                   title: b.title,
@@ -87,10 +93,10 @@ export default function AdvisorPage() {
             <span>Today's Farm Briefing (06:00 AM Synthesis)</span>
           </div>
           <h2 className="text-lg sm:text-2xl font-bold tracking-tight break-words">
-            Prioritize Foliar Pathogen Containment Before Inbound Showers
+            {heroTitle}
           </h2>
           <p className="mt-2 text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
-            The reasoning engine identified a critical synergy: active Early Blight in Plot A combined with 82% humidity and tomorrow afternoon's precipitation creates a severe infection propagation risk. Recommended action items are ranked below by urgency.
+            {heroDescription || "The reasoning engine is synthesizing multi-modal signals from your farm sensors, weather forecast, and crop diagnosis history."}
           </p>
         </div>
 

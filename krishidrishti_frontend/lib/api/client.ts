@@ -435,10 +435,23 @@ export async function fetchSensorDashboard(): Promise<SensorDashboardData> {
 // 7. AGENTIC ADVISOR API
 // ==========================================
 
-export async function fetchAdvisoryBriefings(): Promise<AdvisoryBriefing[]> {
-  // Backend has no /api/advisor/briefing endpoint — always use mock data
-  await new Promise((r) => setTimeout(r, 400));
-  return mockAdvisories;
+export async function fetchAdvisoryBriefings(): Promise<{ briefings: AdvisoryBriefing[]; heroTitle: string; heroDescription: string }> {
+  if (IS_SIMULATION_FORCED) {
+    await new Promise((r) => setTimeout(r, 400));
+    return {
+      briefings: mockAdvisories,
+      heroTitle: mockAdvisories[0]?.title ?? "Farm conditions are stable.",
+      heroDescription: mockAdvisories[0]?.reason ?? "All monitored parameters are within normal ranges.",
+    };
+  }
+  const response = await fetch(`${API_BASE_URL}/api/advisor/briefings?lat=${DEFAULT_LAT}&lon=${DEFAULT_LON}`);
+  if (!response.ok) throw new Error("Failed to fetch advisory briefings");
+  const data = await response.json();
+  return {
+    briefings: data.briefings,
+    heroTitle: data.hero_title,
+    heroDescription: data.hero_description,
+  };
 }
 
 // ==========================================
