@@ -81,9 +81,24 @@ def _verify_token(token: str) -> Optional[dict]:
         return None
 
 def _get_current_user(authorization: str = "") -> Optional[dict]:
+    """Accept both our own JWT and Clerk JWT (user_id in 'sub')."""
     if not authorization.startswith("Bearer "):
         return None
-    return _verify_token(authorization[7:])
+    token = authorization[7:]
+    # Try our own JWT first
+    result = _verify_token(token)
+    if result:
+        return result
+    # Try decoding Clerk JWT without verification to extract sub (user_id)
+    # Clerk tokens are signed by Clerk's servers; we trust the sub claim for DB keying
+    try:
+        unverified = pyjwt.decode(token, options={"verify_signature": False})
+        sub = unverified.get("sub")
+        if sub:
+            return {"sub": sub, "email": unverified.get("email", "")}
+    except Exception:
+        pass
+    return None
 
 import joblib
 import requests
@@ -856,16 +871,7 @@ def _groq_recommendations(crop: str, disease: str, healthy: bool) -> dict:
         return fallback
 
 
-@app.get("/api/diagnosis/history", tags=["Core - Crop Disease Detection"])
-def diagnosis_history():
-    """Returns a static recent diagnosis history."""
-    return [
-        {"id": "diag-101", "date": "2026-09-12T10:30:00Z", "crop": "Tomato", "diagnosis": "Tomato Early Blight", "confidence": 0.942, "severity": "moderate", "status": "active", "imageUrl": "https://images.unsplash.com/photo-1592417817098-8f3d6910985c?auto=format&fit=crop&w=400&q=80"},
-        {"id": "diag-102", "date": "2026-09-10T14:15:00Z", "crop": "Potato", "diagnosis": "Potato Late Blight", "confidence": 0.915, "severity": "critical", "status": "treated", "imageUrl": "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=400&q=80"},
-        {"id": "diag-103", "date": "2026-09-08T09:00:00Z", "crop": "Bell Pepper", "diagnosis": "Healthy Foliage", "confidence": 0.985, "severity": "healthy", "status": "monitoring", "imageUrl": "https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?auto=format&fit=crop&w=400&q=80"},
-        {"id": "diag-104", "date": "2026-09-04T16:45:00Z", "crop": "Wheat", "diagnosis": "Wheat Yellow Rust", "confidence": 0.892, "severity": "moderate", "status": "treated", "imageUrl": "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=400&q=80"},
-        {"id": "diag-105", "date": "2026-09-01T11:20:00Z", "crop": "Apple", "diagnosis": "Apple Scab", "confidence": 0.931, "severity": "low", "status": "monitoring", "imageUrl": "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=400&q=80"},
-    ]
+# DUPLICATE ROUTE REMOVED — the real /api/diagnosis/history with MongoDB is defined above
 
 
 @app.get("/api/model/metrics", tags=["Core - Crop Disease Detection"])

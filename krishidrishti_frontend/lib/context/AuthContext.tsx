@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { useUser, useClerk, useAuth as useClerkAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
@@ -30,7 +30,33 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
+  const { getToken } = useClerkAuth();
   const router = useRouter();
+  const [token, setToken] = useState<string | null>(null);
+
+  // Fetch Clerk JWT and keep it fresh, store in localStorage for getAuthHeaders()
+  useEffect(() => {
+    if (!isLoaded || !user) {
+      setToken(null);
+      localStorage.removeItem("krishidrishti_auth");
+      return;
+    }
+    const refresh = async () => {
+      try {
+        const t = await getToken();
+        if (t) {
+          setToken(t);
+          localStorage.setItem("krishidrishti_auth", JSON.stringify({ token: t }));
+        }
+      } catch {
+        // silent
+      }
+    };
+    refresh();
+    // Refresh every 55 minutes (Clerk tokens expire in 60 min)
+    const interval = setInterval(refresh, 55 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isLoaded, user, getToken]);
 
   const farmer: Farmer | null = user
     ? {
@@ -44,11 +70,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     : null;
 
   const logout = () => {
+    localStorage.removeItem("krishidrishti_auth");
     signOut(() => router.push("/login"));
   };
 
   return (
-    <AuthContext.Provider value={{ farmer, token: null, isLoading: !isLoaded, logout }}>
+    <AuthContext.Provider value={{ farmer, token, isLoading: !isLoaded, logout }}>
       {children}
     </AuthContext.Provider>
   );

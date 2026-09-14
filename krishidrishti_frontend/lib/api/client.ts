@@ -42,7 +42,7 @@ function getAuthHeaders(): Record<string, string> {
     const saved = localStorage.getItem("krishidrishti_auth");
     if (saved) {
       const { token } = JSON.parse(saved);
-      if (token && token !== "demo-token") return { Authorization: `Bearer ${token}` };
+      if (token) return { Authorization: `Bearer ${token}` };
     }
   } catch {}
   return {};
@@ -96,7 +96,9 @@ export async function fetchDiagnosisHistory(): Promise<DiagnosisHistoryItem[]> {
   }
   const response = await fetch(`${API_BASE_URL}/api/diagnosis/history`, { headers: getAuthHeaders() });
   if (!response.ok) throw new Error("Failed to fetch diagnosis history");
-  return response.json();
+  const data = await response.json();
+  // If MongoDB returned real data use it, otherwise it's the static fallback array
+  return data;
 }
 
 
@@ -319,7 +321,7 @@ export async function fetchSustainabilityReport(): Promise<SustainabilityReport>
     return mockSustainabilityReport;
   }
   // Fetch sensor data to build a real sustainability payload
-  const sensorRes = await fetch(`${API_BASE_URL}/sensor-feed?n=1`);
+  const sensorRes = await fetch(`${API_BASE_URL}/sensor-feed?n=1`, { headers: getAuthHeaders() });
   if (!sensorRes.ok) throw new Error("Failed to fetch sensor data for sustainability");
   const sensorData = await sensorRes.json();
   const latest = sensorData.latest;
