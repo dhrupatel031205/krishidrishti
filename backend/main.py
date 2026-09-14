@@ -43,7 +43,7 @@ try:
     from torchvision.models import efficientnet_b0
     from PIL import Image as PILImage
     TORCH_AVAILABLE = True
-except ImportError:
+except Exception:
     TORCH_AVAILABLE = False
 
 _disease_model_bundle = None  # lazy-loaded
