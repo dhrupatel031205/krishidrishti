@@ -77,3 +77,12 @@ body {
   border-color: #d4cfc4;
   box-shadow: 0 4px 12px 0 rgba(20, 56, 35, 0.06);
 }
+
+/* Hide scrollbar utility */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

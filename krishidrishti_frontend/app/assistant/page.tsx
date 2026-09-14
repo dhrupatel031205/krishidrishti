@@ -48,7 +48,7 @@ export default function AssistantPage() {
 
   return (
     <AppShell>
-      <div className="space-y-6 max-w-4xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
+      <div className="space-y-6 max-w-4xl mx-auto flex flex-col" style={{ height: "calc(100dvh - 8rem)" }}>
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

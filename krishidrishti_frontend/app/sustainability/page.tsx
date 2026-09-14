@@ -282,13 +282,13 @@ export default function SustainabilityPage() {
               <>
                 {/* Overall Score */}
                 <div className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-stone-50 p-6 shadow-xs">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-800">
                         <Award className="h-4 w-4" />
                         <span>Overall Ecological Farm Rating</span>
                       </div>
-                      <div className="flex items-baseline gap-3">
+                      <div className="flex flex-wrap items-baseline gap-3">
                         <span className="text-5xl font-black tracking-tight text-emerald-900">
                           {report.overallScore}
                         </span>
@@ -307,7 +307,7 @@ export default function SustainabilityPage() {
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 border-t md:border-t-0 md:border-l border-emerald-200/85 pt-4 md:pt-0 md:pl-6">
+                    <div className="grid grid-cols-2 gap-4 border-t sm:border-t-0 sm:border-l border-emerald-200/85 pt-4 sm:pt-0 sm:pl-6">
                       <div>
                         <span className="text-xs text-stone-500 block">Water Saved</span>
                         <span className="text-xl font-bold text-stone-900">

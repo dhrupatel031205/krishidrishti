@@ -88,44 +88,44 @@ export default function LandingPage() {
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }
             }}
-            className="flex items-center gap-3 group cursor-pointer"
+            className="flex items-center gap-2 group cursor-pointer min-w-0"
           >
             <img
               src="/logo.png"
               alt="KrishiDrishti - SEE. PREDICT. PROTECT. GROW."
-              className="h-12 sm:h-14 w-auto max-w-[240px] object-contain rounded-lg shadow-xs group-hover:scale-105 transition-transform"
+              className="h-9 sm:h-12 w-auto max-w-[48px] sm:max-w-[240px] object-contain rounded-lg shadow-xs group-hover:scale-105 transition-transform shrink-0"
               loading="eager"
             />
-            <div className="flex flex-col">
-              <span className="text-lg sm:text-xl font-black tracking-tight text-emerald-900 leading-none">
+            <div className="flex flex-col min-w-0">
+              <span className="text-base sm:text-xl font-black tracking-tight text-emerald-900 leading-none">
                 Krishi<span className="text-emerald-600">Drishti</span>
               </span>
-              <span className="text-[9px] font-bold tracking-widest text-stone-500 uppercase mt-0.5">
+              <span className="hidden sm:block text-[9px] font-bold tracking-widest text-stone-500 uppercase mt-0.5">
                 See • Predict • Protect • Grow
               </span>
             </div>
           </Link>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0">
             {isLoaded && isSignedIn ? (
               <Link
                 href="/dashboard"
-                className="flex items-center gap-2 rounded-xl bg-emerald-800 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-900 transition-colors"
+                className="flex items-center gap-1.5 rounded-xl bg-emerald-800 px-3 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-900 transition-colors"
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
-                Dashboard
+                <span className="hidden sm:inline">Dashboard</span>
               </Link>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className="flex items-center gap-2 rounded-xl border border-stone-200/90 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-100/80 hover:text-stone-900 transition-colors"
+                  className="flex items-center gap-2 rounded-xl border border-stone-200/90 bg-white px-3 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-100/80 hover:text-stone-900 transition-colors"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/signup"
-                  className="rounded-xl bg-emerald-800 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-900 transition-colors"
+                  className="rounded-xl bg-emerald-800 px-3 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-900 transition-colors"
                 >
                   Get Started
                 </Link>
@@ -143,7 +143,7 @@ export default function LandingPage() {
             <span>AI-Powered Intelligent Agriculture Platform</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-stone-900 leading-[1.15]">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-stone-900 leading-[1.15]">
             Intelligent Crop Health & Smart Agriculture
           </h1>
 

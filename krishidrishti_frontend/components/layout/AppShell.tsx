@@ -19,10 +19,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         mobileOpen={mobileOpen}
         setMobileOpen={setMobileOpen}
       />
+      {/* On mobile sidebar is a drawer — no left padding needed */}
+      <div className="flex flex-col min-h-screen lg:hidden">
+        <TopNav
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
+          onOpenMobile={() => setMobileOpen(true)}
+          farmer={farmer}
+        />
+        <main className="flex-1 p-3 sm:p-5 max-w-7xl w-full mx-auto overflow-x-hidden">
+          {children}
+        </main>
+      </div>
       <motion.div
         animate={{ paddingLeft: isCollapsed ? 68 : 256 }}
         transition={{ type: "spring", damping: 26, stiffness: 220 }}
-        className="flex flex-col min-h-screen"
+        className="hidden lg:flex flex-col min-h-screen"
       >
         <TopNav
           isCollapsed={isCollapsed}
@@ -30,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onOpenMobile={() => setMobileOpen(true)}
           farmer={farmer}
         />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-5 lg:p-8 max-w-7xl w-full mx-auto overflow-x-hidden">
           {children}
         </main>
       </motion.div>

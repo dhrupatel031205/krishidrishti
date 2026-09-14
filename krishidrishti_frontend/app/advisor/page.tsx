@@ -68,7 +68,7 @@ export default function AdvisorPage() {
             <Sparkles className="h-4 w-4" />
             <span>Today's Farm Briefing (06:00 AM Synthesis)</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+          <h2 className="text-lg sm:text-2xl font-bold tracking-tight break-words">
             Prioritize Foliar Pathogen Containment Before Inbound Showers
           </h2>
           <p className="mt-2 text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
@@ -96,7 +96,7 @@ export default function AdvisorPage() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-stone-100">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${getPriorityStyle(
                           briefing.priority
@@ -104,7 +104,7 @@ export default function AdvisorPage() {
                       >
                         {briefing.priority} Priority
                       </span>
-                      <h4 className="text-base font-bold text-stone-900">
+                      <h4 className="text-sm sm:text-base font-bold text-stone-900">
                         {briefing.title}
                       </h4>
                     </div>

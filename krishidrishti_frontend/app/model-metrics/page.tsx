@@ -215,17 +215,17 @@ export default function ModelMetricsPage() {
 
         {/* Tabs */}
         <div className="rounded-2xl border border-stone-200 bg-white shadow-xs overflow-hidden">
-          <div className="flex border-b border-stone-200 bg-stone-50">
+          <div className="flex overflow-x-auto border-b border-stone-200 bg-stone-50 scrollbar-none">
             {[
-              { id: "loss",      label: "Training vs Val Loss",    icon: TrendingUp },
-              { id: "f1",        label: "Training vs Val Macro-F1",icon: TrendingUp },
-              { id: "confusion", label: "Confusion Matrix",         icon: Grid3x3 },
-              { id: "classes",   label: "Per-Class Metrics",        icon: BarChart2 },
+              { id: "loss",      label: "Loss",         icon: TrendingUp },
+              { id: "f1",        label: "Macro-F1",     icon: TrendingUp },
+              { id: "confusion", label: "Confusion",    icon: Grid3x3 },
+              { id: "classes",   label: "Per-Class",    icon: BarChart2 },
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setActiveTab(id as any)}
-                className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold transition-colors border-b-2 ${
+                className={`flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs font-semibold transition-colors border-b-2 whitespace-nowrap shrink-0 ${
                   activeTab === id
                     ? "border-emerald-700 text-emerald-800 bg-white"
                     : "border-transparent text-stone-500 hover:text-stone-800"

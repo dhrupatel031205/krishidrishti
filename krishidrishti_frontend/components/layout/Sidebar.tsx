@@ -403,10 +403,10 @@ export function TopNav({
       <div className="flex items-center gap-3">
         <Link
           href="/diagnosis"
-          className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 transition-colors"
         >
           <ScanLine className="h-3.5 w-3.5" />
-          <span>{t("quickDiagnosis")}</span>
+          <span className="hidden sm:inline">{t("quickDiagnosis")}</span>
         </Link>
 
         {farmer && (

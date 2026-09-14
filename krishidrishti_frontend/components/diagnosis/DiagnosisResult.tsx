@@ -104,33 +104,33 @@ export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
           {/* Model Output — matches screenshot format */}
           <div className="md:col-span-2 space-y-4">
             {/* Terminal-style output block */}
-            <div className="rounded-xl bg-stone-900 p-5 font-mono text-sm border border-stone-700">
+            <div className="rounded-xl bg-stone-900 p-3 sm:p-5 font-mono text-xs border border-stone-700 overflow-x-auto">
               <div className="flex items-center gap-2 mb-3 pb-2 border-b border-stone-700">
                 <span className="text-emerald-400 text-base">🌱</span>
                 <span className="text-emerald-400 font-bold">AgriSmart AI – Prediction Result</span>
               </div>
               <div className="space-y-1.5 text-stone-200">
                 <div className="flex gap-2">
-                  <span className="text-stone-400 w-24 shrink-0">Crop</span>
+                  <span className="text-stone-400 w-20 sm:w-24 shrink-0">Crop</span>
                   <span className="text-stone-400">:</span>
-                  <span className="text-white font-semibold">{result.crop}</span>
+                  <span className="text-white font-semibold break-all">{result.crop}</span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-stone-400 w-24 shrink-0">Condition</span>
+                  <span className="text-stone-400 w-20 sm:w-24 shrink-0">Condition</span>
                   <span className="text-stone-400">:</span>
-                  <span className={`font-semibold ${isHealthy ? "text-emerald-400" : "text-amber-400"}`}>
+                  <span className={`font-semibold break-all ${isHealthy ? "text-emerald-400" : "text-amber-400"}`}>
                     {result.condition || result.disease}
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-stone-400 w-24 shrink-0">Status</span>
+                  <span className="text-stone-400 w-20 sm:w-24 shrink-0">Status</span>
                   <span className="text-stone-400">:</span>
                   <span className={`font-semibold ${isHealthy ? "text-emerald-400" : "text-rose-400"}`}>
                     {result.status || (isHealthy ? "Healthy" : "Disease Detected")}
                   </span>
                 </div>
                 <div className="flex gap-2">
-                  <span className="text-stone-400 w-24 shrink-0">Confidence</span>
+                  <span className="text-stone-400 w-20 sm:w-24 shrink-0">Confidence</span>
                   <span className="text-stone-400">:</span>
                   <span className="text-emerald-300 font-bold">
                     {result.confidence_pct || `${confidencePercent}%`}
@@ -277,17 +277,17 @@ export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
                 Powered by Groq
               </span>
             </h3>
-            <div className="flex gap-1 bg-stone-100 p-1 rounded-lg">
+          <div className="flex flex-wrap gap-1 bg-stone-100 p-1 rounded-lg overflow-x-auto">
               {[
-                { id: "immediate", label: "Immediate Actions" },
-                { id: "treatment", label: "Treatment Plan" },
+                { id: "immediate", label: "Immediate" },
+                { id: "treatment", label: "Treatment" },
                 { id: "prevention", label: "Prevention" },
                 { id: "monitoring", label: "Monitoring" },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                  className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all whitespace-nowrap ${
                     activeTab === tab.id
                       ? "bg-white text-stone-900 shadow-xs"
                       : "text-stone-500 hover:text-stone-800"

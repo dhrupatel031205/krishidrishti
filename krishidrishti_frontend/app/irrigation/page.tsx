@@ -213,7 +213,7 @@ export default function IrrigationPage() {
             </div>
 
             {/* Gauge + Chart */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Circular Gauge */}
               <div className="rounded-2xl border border-stone-200/80 bg-white p-6 shadow-xs flex flex-col justify-between">
                 <div>
