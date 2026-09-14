@@ -306,14 +306,16 @@ export default function LandingPage() {
 
             <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
               {isLoaded && isSignedIn ? (
-                <Link
-                  href="/dashboard"
-                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-md transition-all"
-                >
-                  <LayoutDashboard className="h-4 w-4" />
-                  Go to Dashboard
-                </Link>
-                <EvaluatorManualDownload variant="hero" />
+                <>
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-md transition-all"
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    Go to Dashboard
+                  </Link>
+                  <EvaluatorManualDownload variant="hero" />
+                </>
               ) : (
                 <>
                   <Link
