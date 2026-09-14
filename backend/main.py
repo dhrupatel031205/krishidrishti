@@ -35,6 +35,92 @@ from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+# ── PyTorch disease model ──────────────────────────────────────────────
+try:
+    import torch
+    import torch.nn as nn
+    from torchvision import transforms
+    from torchvision.models import efficientnet_b0
+    from PIL import Image as PILImage
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+
+_disease_model_bundle = None  # lazy-loaded
+
+_DISEASE_MODEL_PATH = (
+    Path(__file__).resolve().parent / "models" / "best_agri_model.pth"
+)
+
+_INFER_TRANSFORM = None
+
+def _load_disease_model():
+    """Load EfficientNet-B0 from best_agri_model.pth (lazy, cached)."""
+    global _disease_model_bundle, _INFER_TRANSFORM
+    if _disease_model_bundle is not None:
+        return _disease_model_bundle
+    if not TORCH_AVAILABLE:
+        return None
+    if not _DISEASE_MODEL_PATH.exists():
+        return None
+    try:
+        checkpoint = torch.load(
+            str(_DISEASE_MODEL_PATH),
+            map_location=torch.device("cpu"),
+            weights_only=False,
+        )
+        num_classes = checkpoint["num_classes"]
+        model = efficientnet_b0(weights=None)
+        in_features = model.classifier[1].in_features
+        model.classifier[1] = nn.Linear(in_features, num_classes)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        model.eval()
+        image_size = checkpoint.get("image_size", 224)
+        _INFER_TRANSFORM = transforms.Compose([
+            transforms.Resize((image_size, image_size)),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225],
+            ),
+        ])
+        _disease_model_bundle = {
+            "model": model,
+            "class_names": checkpoint["class_names"],
+            "idx_to_class": checkpoint.get("idx_to_class", {
+                str(i): c for i, c in enumerate(checkpoint["class_names"])
+            }),
+        }
+        return _disease_model_bundle
+    except Exception as e:
+        print(f"[WARN] Could not load disease model: {e}")
+        return None
+
+
+def _predict_disease_model(image_bytes: bytes):
+    """Run real EfficientNet inference. Returns (class_name, confidence, top5)."""
+    bundle = _load_disease_model()
+    if bundle is None:
+        return None
+    try:
+        img = PILImage.open(io.BytesIO(image_bytes)).convert("RGB")
+        tensor = _INFER_TRANSFORM(img).unsqueeze(0)
+        with torch.no_grad():
+            outputs = bundle["model"](tensor)
+            probs = torch.softmax(outputs, dim=1)[0]
+        top5_vals, top5_idx = torch.topk(probs, min(5, len(probs)))
+        class_names = bundle["class_names"]
+        top5 = [
+            {"className": class_names[i.item()], "probability": round(v.item(), 4)}
+            for v, i in zip(top5_vals, top5_idx)
+        ]
+        best_class = class_names[top5_idx[0].item()]
+        best_conf = round(top5_vals[0].item(), 4)
+        return best_class, best_conf, top5
+    except Exception as e:
+        print(f"[WARN] Inference error: {e}")
+        return None
+
 app = FastAPI(title="AgriSmart AI - Bonus Backend (A-F)", version="1.1.0")
 
 ALLOWED_ORIGINS = [
@@ -219,16 +305,43 @@ def _parse_class(cls: str):
 
 
 def _match_disease(filename: str, image_bytes: bytes = b"") -> dict:
-    """Match uploaded filename to a disease entry.
-    Falls back to a deterministic disease pick based on image content hash.
-    """
+    """Try real model first; fall back to hash-based KB lookup."""
+    # --- Real model inference ---
+    result = _predict_disease_model(image_bytes)
+    if result is not None:
+        best_class, best_conf, top5 = result
+        crop, condition, healthy = _parse_class(best_class)
+        # Find closest KB entry for recommendations
+        kb_key = next(
+            (k for k in _DISEASE_KB if k in best_class.lower().replace(" ", "_")),
+            "healthy" if healthy else None,
+        )
+        if kb_key is None:
+            kb_key = next(
+                (k for k in _DISEASE_KB if k != "healthy"),
+                "healthy",
+            )
+        kb = _DISEASE_KB[kb_key]
+        return {
+            "crop": crop,
+            "disease": condition,
+            "healthy": healthy,
+            "confidence": best_conf,
+            "severity": "healthy" if healthy else kb.get("severity", "moderate"),
+            "explanation": kb.get("explanation", f"Model detected: {condition}"),
+            "immediateActions": kb.get("immediateActions", []),
+            "treatmentPlan": kb.get("treatmentPlan", []),
+            "prevention": kb.get("prevention", []),
+            "monitoringAdvice": kb.get("monitoringAdvice", []),
+            "classProbabilities": top5,
+            "_from_model": True,
+        }
+
+    # --- Fallback: hash-based KB lookup ---
     name = filename.lower().replace(" ", "_").replace("-", "_")
     for key in _DISEASE_KB:
         if key != "healthy" and key in name:
             return _DISEASE_KB[key]
-
-    # Use image bytes hash for deterministic (non-random) disease selection
-    # so the same image always returns the same result
     seed = int(hashlib.md5(image_bytes[:2048] if image_bytes else name.encode()).hexdigest(), 16)
     disease_keys = [k for k in _DISEASE_KB if k != "healthy"]
     return _DISEASE_KB[disease_keys[seed % len(disease_keys)]]
@@ -245,24 +358,29 @@ async def predict_disease(file: UploadFile = File(...)):
     data_url = f"data:{file.content_type};base64,{image_b64}"
 
     d = _match_disease(file.filename or "", contents)
-    crop, condition, healthy = _parse_class(
-        next((c for c in _CLASSES if d["disease"].lower().replace(" ", "_") in c.lower()), _CLASSES[-1])
-    )
 
-    status = "Healthy" if d["healthy"] else "Disease Detected"
+    # _from_model means crop/condition already parsed by real inference
+    if d.get("_from_model"):
+        crop = d["crop"]
+        condition = d["disease"]
+        healthy = d["healthy"]
+    else:
+        crop, condition, healthy = _parse_class(
+            next((c for c in _CLASSES if d["disease"].lower().replace(" ", "_") in c.lower()), _CLASSES[-1])
+        )
 
-    # Generate Groq-powered recommendations
-    recs = _groq_recommendations(d["crop"], d["disease"], d["healthy"])
+    status = "Healthy" if healthy else "Disease Detected"
+    recs = _groq_recommendations(crop, condition, healthy)
 
     return {
         "id": f"diag-{int(datetime.now(timezone.utc).timestamp())}",
-        "crop": d["crop"],
-        "condition": d["disease"],
+        "crop": crop,
+        "condition": condition,
         "status": status,
         "confidence": d["confidence"],
         "confidence_pct": f"{round(d['confidence'] * 100, 2)}%",
-        "disease": d["disease"],
-        "healthy": d["healthy"],
+        "disease": condition,
+        "healthy": healthy,
         "severity": d["severity"],
         "explanation": d["explanation"],
         "heatmapUrl": None,
@@ -270,7 +388,7 @@ async def predict_disease(file: UploadFile = File(...)):
         "imageUrl": data_url,
         "classProbabilities": d["classProbabilities"],
         "recommendations": recs,
-        "model": "EfficientNet-B3",
+        "model": "EfficientNet-B0",
         "dataset": "PlantVillage (38 classes, 54,305 images)",
         "input_size": "224x224",
     }
