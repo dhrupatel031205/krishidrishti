@@ -64,18 +64,51 @@ async function generateDiagnosisPDF(result: PredictionResponse, recs: NonNullabl
 
   let y = 52;
 
-  // ── Section 1: Diagnosis Summary ──
-  doc.setFillColor(...E);
-  doc.rect(14, y, W - 28, 7, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(255, 255, 255);
-  doc.text("DIAGNOSIS SUMMARY", 18, y + 5);
-  y += 11;
+  // ── Section 1: Leaf Image + Diagnosis Summary side by side ──
+  const IMG_W = 60;
+  const IMG_H = 50;
+  const TABLE_X = 14 + IMG_W + 6;
+  const TABLE_W = W - TABLE_X - 14;
 
+  // Draw image box (border)
+  doc.setDrawColor(220, 220, 220);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(14, y, IMG_W, IMG_H, 2, 2, "S");
+
+  if (result.imageUrl) {
+    try {
+      // Convert URL/dataURL to base64 if needed
+      let imgData = result.imageUrl;
+      if (imgData.startsWith("blob:") || (!imgData.startsWith("data:"))) {
+        const res = await fetch(imgData);
+        const blob = await res.blob();
+        imgData = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      }
+      const fmt = imgData.includes("image/png") ? "PNG" : "JPEG";
+      doc.addImage(imgData, fmt, 14, y, IMG_W, IMG_H);
+    } catch {
+      // fallback: label only
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7);
+      doc.setTextColor(...GRAY);
+      doc.text("Leaf image unavailable", 14 + IMG_W / 2, y + IMG_H / 2, { align: "center" });
+    }
+  }
+
+  // Caption under image
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(...GRAY);
+  doc.text("Analyzed Leaf Sample", 14 + IMG_W / 2, y + IMG_H + 4, { align: "center" });
+
+  // Summary table to the right of the image
   const summaryRows = [
     ["Crop", result.crop],
-    ["Detected Condition", result.condition || result.disease || "—"],
+    ["Condition", result.condition || result.disease || "—"],
     ["Status", result.status || (result.healthy ? "Healthy" : "Disease Detected")],
     ["Confidence", result.confidence_pct || `${Math.round(result.confidence * 100)}%`],
     ["Severity", result.severity ? result.severity.toUpperCase() : "—"],
@@ -85,14 +118,18 @@ async function generateDiagnosisPDF(result: PredictionResponse, recs: NonNullabl
   autoTable(doc, {
     startY: y,
     body: summaryRows,
-    columnStyles: { 0: { fontStyle: "bold", cellWidth: 50, fillColor: [248, 250, 248] }, 1: { cellWidth: "auto" } },
-    styles: { fontSize: 9, cellPadding: 3 },
-    margin: { left: 14, right: 14 },
+    columnStyles: {
+      0: { fontStyle: "bold", cellWidth: 28, fillColor: [248, 250, 248] },
+      1: { cellWidth: TABLE_W - 28 },
+    },
+    styles: { fontSize: 8.5, cellPadding: 2.8 },
+    margin: { left: TABLE_X, right: 14 },
     theme: "plain",
     tableLineColor: [220, 220, 220],
     tableLineWidth: 0.2,
   });
-  y = (doc as any).lastAutoTable.finalY + 8;
+
+  y = Math.max((doc as any).lastAutoTable.finalY, y + IMG_H + 6) + 8;
 
   // ── Section 2: Pathology Explanation ──
   if (result.explanation) {
@@ -215,11 +252,6 @@ function DiagnosisDownloadButton({ result, recs }: { result: PredictionResponse;
       {loading ? "Generating..." : "Download Report"}
     </button>
   );
-}
-
-interface DiagnosisResultProps {
-  result: PredictionResponse;
-  onReset: () => void;
 }
 
 export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
