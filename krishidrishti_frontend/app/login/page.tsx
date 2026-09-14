@@ -15,7 +15,7 @@ export default function LoginPage() {
         </div>
         <SignIn
           routing="hash"
-          afterSignInUrl="/dashboard"
+          fallbackRedirectUrl="/dashboard"
           appearance={{
             elements: {
               rootBox: "w-full",

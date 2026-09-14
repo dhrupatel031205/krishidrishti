@@ -15,7 +15,7 @@ export default function SignupPage() {
         </div>
         <SignUp
           routing="hash"
-          afterSignUpUrl="/dashboard"
+          fallbackRedirectUrl="/dashboard"
           appearance={{
             elements: {
               rootBox: "w-full",
