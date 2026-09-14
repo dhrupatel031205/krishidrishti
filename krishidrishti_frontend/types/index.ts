@@ -87,6 +87,8 @@ export interface IrrigationStatus {
   status: "optimal" | "needs_water" | "saturated" | "scheduled";
   lastWatered: string;
   isSimulated: boolean;
+  rainForecastMm?: number;
+  irrigationReason?: string;
   history: {
     time: string;
     moisture: number;

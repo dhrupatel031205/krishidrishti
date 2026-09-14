@@ -185,44 +185,72 @@ export async function getCropRecommendations(input: CropRecommendationInput): Pr
 // 3. SMART IRRIGATION API
 // ==========================================
 
-export async function fetchIrrigationStatus(): Promise<IrrigationStatus> {
+export async function fetchIrrigationStatus(growthStage: string = "vegetative"): Promise<IrrigationStatus> {
   if (IS_SIMULATION_FORCED) {
     await new Promise((r) => setTimeout(r, 400));
     return mockIrrigationStatus;
   }
-  // Use sensor feed to get current soil moisture, then call irrigation endpoint
-  const sensorRes = await fetch(`${API_BASE_URL}/sensor-feed?n=1`, { headers: getAuthHeaders() });
+  // Step 1: get current soil moisture from sensor
+  const sensorRes = await fetch(`${API_BASE_URL}/sensor-feed?n=6`, { headers: getAuthHeaders() });
   if (!sensorRes.ok) throw new Error("Failed to fetch sensor data for irrigation");
   const sensorData = await sensorRes.json();
   const latest = sensorData.latest;
 
+  // Step 2: get real rain forecast from weather API
+  let rainForecastMm = 0;
+  try {
+    const weatherRes = await fetch(`${API_BASE_URL}/weather?lat=${DEFAULT_LAT}&lon=${DEFAULT_LON}`);
+    if (weatherRes.ok) {
+      const weatherData = await weatherRes.json();
+      rainForecastMm = weatherData.rain_next_24h_mm ?? 0;
+    }
+  } catch {}
+
+  // Step 3: call irrigation decision engine
   const irrigRes = await fetch(`${API_BASE_URL}/irrigation`, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     body: JSON.stringify({
       soil_moisture: latest.soil_moisture,
-      growth_stage: "vegetative",
-      rain_forecast_mm: 0,
+      growth_stage: growthStage,
+      rain_forecast_mm: rainForecastMm,
       temperature: latest.temperature,
     }),
   });
   if (!irrigRes.ok) throw new Error("Failed to fetch irrigation status");
   const irrigData = await irrigRes.json();
 
-  // Map to frontend IrrigationStatus shape
+  const THRESHOLDS: Record<string, number> = { seedling: 40, vegetative: 50, flowering: 60, maturity: 35 };
+  const threshold = THRESHOLDS[growthStage] ?? 50;
+
+  // Calculate next irrigation time
+  const now = new Date();
+  let nextTime = "Not required";
+  if (irrigData.irrigate) {
+    // Schedule next irrigation at next 6AM or 6PM window
+    const next = new Date(now);
+    const hour = now.getHours();
+    if (hour < 6) { next.setHours(6, 0, 0, 0); }
+    else if (hour < 18) { next.setHours(18, 0, 0, 0); }
+    else { next.setDate(next.getDate() + 1); next.setHours(6, 0, 0, 0); }
+    nextTime = next.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
   return {
     currentMoisture: latest.soil_moisture,
-    targetMoistureMin: 45,
-    targetMoistureMax: 65,
-    waterRequirementLiters: irrigData.irrigate ? 1200 : 0,
-    nextIrrigationTime: irrigData.irrigate ? "As soon as possible" : "Not required",
-    status: irrigData.irrigate ? "needs_water" : "optimal",
-    lastWatered: latest.timestamp,
+    targetMoistureMin: threshold - 10,
+    targetMoistureMax: threshold + 15,
+    waterRequirementLiters: irrigData.irrigate ? Math.round((threshold - latest.soil_moisture) * 0.5 * 100) : 0,
+    nextIrrigationTime: nextTime,
+    status: irrigData.irrigate ? "needs_water" : latest.soil_moisture > threshold + 15 ? "saturated" : "optimal",
+    lastWatered: new Date(latest.timestamp).toLocaleString(),
     isSimulated: false,
+    rainForecastMm,
+    irrigationReason: irrigData.reason,
     history: sensorData.readings.map((r: { timestamp: string; soil_moisture: number }) => ({
       time: new Date(r.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       moisture: r.soil_moisture,
-      threshold: 45,
+      threshold,
     })),
   };
 }
