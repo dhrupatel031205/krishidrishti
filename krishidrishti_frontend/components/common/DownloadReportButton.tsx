@@ -12,11 +12,11 @@ interface DownloadReportButtonProps {
   variant?: "outline" | "solid";
 }
 
-const E = [27, 67, 50] as const;   // emerald-900
-const E2 = [52, 211, 153] as const; // emerald-400
-const E3 = [240, 253, 244] as const; // emerald-50
-const GRAY = [100, 100, 100] as const;
-const DARK = [30, 30, 30] as const;
+const E: [number, number, number] = [27, 67, 50];
+const E2: [number, number, number] = [52, 211, 153];
+const E3: [number, number, number] = [240, 253, 244];
+const GRAY: [number, number, number] = [100, 100, 100];
+const DARK: [number, number, number] = [30, 30, 30];
 
 async function getLogo(): Promise<string | null> {
   try {
