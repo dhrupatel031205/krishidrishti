@@ -148,7 +148,7 @@ export function EvaluatorManualDownload({ variant = "navbar" }: { variant?: "nav
       gap(8);
 
       sec("QUICK REFERENCE — WHAT WAS BUILT");
-      row("Team", "KrishiDrishti");
+      row("Team", "Team ByteForge");
       row("Problem", "C-433 — AgriSmart AI: Intelligent Agriculture for a Sustainable Future");
       row("Institution", "L. J. Institute of Engineering and Technology");
       row("Core Task", "Crop Disease Detection — EfficientNet-B0, 38 classes, PlantVillage");
