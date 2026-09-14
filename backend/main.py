@@ -583,8 +583,8 @@ def sustainability_score(d: SustainabilityInput):
 # If no key is set, it falls back to a grounded reply already written
 # in the requested language (so output is ALWAYS Hindi/Gujarati).
 
-LANG_NAME = {"hi": "Hindi", "gu": "Gujarati"}
-GREETING = {"hi": "आपकी खेती की सलाह:", "gu": "તમારી ખેતી સલાહ:"}
+LANG_NAME = {"hi": "Hindi", "gu": "Gujarati", "en": "English"}
+GREETING = {"hi": "आपकी खेती की सलाह:", "gu": "તમારી ખેતી સલાહ:", "en": "Farm Advisory:"}
 LABEL_CROP = {"hi": "अनुशंसित फसल", "gu": "ભલામણ કરેલ પાક"}
 LABEL_IRRIG = {"hi": "सिंचाई", "gu": "સિંચાઈ"}
 LABEL_DISEASE = {"hi": "रोग", "gu": "રોગ"}
@@ -643,16 +643,18 @@ def _llm_reply(facts: str, lang: str) -> Optional[str]:
         return None
     base = os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1")
     model = os.getenv("LLM_MODEL", "llama-3.3-70b-versatile")
-    lang_name = LANG_NAME.get(lang, "Hindi")
+    lang_name = LANG_NAME.get(lang, "English")
+    system_prompt = (
+        f"You are KrishiDrishti AI, an expert agricultural assistant. "
+        f"Reply in {lang_name}. Give practical, concise farming advice in 3-5 sentences. "
+        f"Cover crop diseases, irrigation, soil health, fertilizers, and weather risks."
+    )
     try:
         r = requests.post(
             f"{base}/chat/completions",
             headers={"Authorization": f"Bearer {api_key}"},
-            json={"model": model, "temperature": 0.4, "messages": [
-                {"role": "system",
-                 "content": (f"You are a helpful farm advisor. Reply ONLY in {lang_name}. "
-                             f"Use ONLY the facts given below - do not invent anything. "
-                             f"Write 3-5 short, simple, friendly lines a farmer can follow.")},
+            json={"model": model, "temperature": 0.5, "messages": [
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": facts},
             ]},
             timeout=25,
@@ -665,8 +667,9 @@ def _llm_reply(facts: str, lang: str) -> Optional[str]:
 
 @app.post("/assistant", tags=["E - Farmer Assistant"])
 def assistant(d: AssistantInput):
-    lang = d.language if d.language in LANG_NAME else "hi"
-    facts = _facts(d, lang)
+    lang = d.language if d.language in LANG_NAME else "en"
+    # Use raw irrigation_action as free-form message if no structured fields
+    facts = _facts(d, lang) if (d.disease or d.recommended_crop) else (d.irrigation_action or "-")
     llm = _llm_reply(facts, lang)
     return {
         "reply": llm if llm else _grounded_reply(d, lang),

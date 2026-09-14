@@ -389,7 +389,7 @@ export async function sendAssistantMessage(message: string, attachedImage?: stri
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       irrigation_action: message,
-      language: "hi",
+      language: "en",
     }),
   });
 
