@@ -168,7 +168,7 @@ _DISEASE_KB = {
         ],
     },
     "healthy": {
-        "crop": "Unknown", "disease": "Healthy Foliage", "healthy": True,
+        "crop": "Healthy Plant", "disease": "Healthy Foliage", "healthy": True,
         "confidence": 0.978, "severity": "healthy",
         "explanation": "Uniform chlorophyll distribution, intact leaf margins, no fungal sporulation, chlorosis, or necrotic tissue detected.",
         "immediateActions": ["No therapeutic action required. Foliar integrity is optimal."],
@@ -219,7 +219,20 @@ def _match_disease(filename: str) -> dict:
     for key in _DISEASE_KB:
         if key in name:
             return _DISEASE_KB[key]
-    return _DISEASE_KB["healthy"]
+    # Try to extract crop name from filename for a better fallback
+    crop_hints = {
+        "tomato": "Tomato", "potato": "Potato", "corn": "Corn", "maize": "Corn",
+        "apple": "Apple", "grape": "Grape", "pepper": "Bell Pepper",
+        "wheat": "Wheat", "rice": "Rice", "soybean": "Soybean",
+        "strawberry": "Strawberry", "peach": "Peach", "cherry": "Cherry",
+        "orange": "Orange", "blueberry": "Blueberry", "raspberry": "Raspberry",
+        "squash": "Squash",
+    }
+    detected_crop = next((v for k, v in crop_hints.items() if k in name), None)
+    fallback = dict(_DISEASE_KB["healthy"])
+    if detected_crop:
+        fallback["crop"] = detected_crop
+    return fallback
 
 
 @app.post("/api/predict", tags=["Core - Crop Disease Detection"])
