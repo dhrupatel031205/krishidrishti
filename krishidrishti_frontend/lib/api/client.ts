@@ -54,8 +54,10 @@ export async function predictCropDisease(fileOrSampleId: File | string): Promise
   // No backend configured — use mock
   if (!IS_DIAGNOSIS_LIVE) {
     await new Promise((r) => setTimeout(r, 1500));
-    const sample = sampleLeaves[0];
-    const previewUrl = typeof fileOrSampleId !== "string" ? URL.createObjectURL(fileOrSampleId) : sample.image;
+    const previewUrl = URL.createObjectURL(fileOrSampleId as File);
+    // Pick sample deterministically based on file size so different images vary
+    const idx = (fileOrSampleId as File).size % sampleLeaves.length;
+    const sample = sampleLeaves[idx];
     return { ...sample.prediction, analyzedAt: new Date().toISOString(), imageUrl: previewUrl };
   }
 

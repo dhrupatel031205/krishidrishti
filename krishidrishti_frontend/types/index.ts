@@ -20,8 +20,11 @@ export interface PredictionResponse {
   id?: string;
   crop: string;
   disease: string;
-  healthy: boolean;
+  condition?: string;
+  status?: string;
   confidence: number;
+  confidence_pct?: string;
+  healthy: boolean;
   severity?: SeverityLevel;
   recommendations?: DiseaseRecommendationSection;
   classProbabilities?: ClassProbability[];

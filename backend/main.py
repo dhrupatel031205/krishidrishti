@@ -16,13 +16,18 @@ Modules:
     F  GET  /sensor-feed          Simulated IoT sensor stream
 """
 import base64
+import hashlib
 import io
+import json
 import math
 import os
 import random
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
+
+from dotenv import load_dotenv
+load_dotenv()
 
 import joblib
 import requests
@@ -213,26 +218,20 @@ def _parse_class(cls: str):
     return crop, condition, healthy
 
 
-def _match_disease(filename: str) -> dict:
-    """Match uploaded filename to a disease entry, fallback to healthy."""
+def _match_disease(filename: str, image_bytes: bytes = b"") -> dict:
+    """Match uploaded filename to a disease entry.
+    Falls back to a deterministic disease pick based on image content hash.
+    """
     name = filename.lower().replace(" ", "_").replace("-", "_")
     for key in _DISEASE_KB:
-        if key in name:
+        if key != "healthy" and key in name:
             return _DISEASE_KB[key]
-    # Try to extract crop name from filename for a better fallback
-    crop_hints = {
-        "tomato": "Tomato", "potato": "Potato", "corn": "Corn", "maize": "Corn",
-        "apple": "Apple", "grape": "Grape", "pepper": "Bell Pepper",
-        "wheat": "Wheat", "rice": "Rice", "soybean": "Soybean",
-        "strawberry": "Strawberry", "peach": "Peach", "cherry": "Cherry",
-        "orange": "Orange", "blueberry": "Blueberry", "raspberry": "Raspberry",
-        "squash": "Squash",
-    }
-    detected_crop = next((v for k, v in crop_hints.items() if k in name), None)
-    fallback = dict(_DISEASE_KB["healthy"])
-    if detected_crop:
-        fallback["crop"] = detected_crop
-    return fallback
+
+    # Use image bytes hash for deterministic (non-random) disease selection
+    # so the same image always returns the same result
+    seed = int(hashlib.md5(image_bytes[:2048] if image_bytes else name.encode()).hexdigest(), 16)
+    disease_keys = [k for k in _DISEASE_KB if k != "healthy"]
+    return _DISEASE_KB[disease_keys[seed % len(disease_keys)]]
 
 
 @app.post("/api/predict", tags=["Core - Crop Disease Detection"])
@@ -245,22 +244,23 @@ async def predict_disease(file: UploadFile = File(...)):
     image_b64 = base64.b64encode(contents).decode("utf-8")
     data_url = f"data:{file.content_type};base64,{image_b64}"
 
-    d = _match_disease(file.filename or "")
+    d = _match_disease(file.filename or "", contents)
     crop, condition, healthy = _parse_class(
         next((c for c in _CLASSES if d["disease"].lower().replace(" ", "_") in c.lower()), _CLASSES[-1])
     )
 
     status = "Healthy" if d["healthy"] else "Disease Detected"
 
+    # Generate Groq-powered recommendations
+    recs = _groq_recommendations(d["crop"], d["disease"], d["healthy"])
+
     return {
         "id": f"diag-{int(datetime.now(timezone.utc).timestamp())}",
-        # Core model output format (matches screenshot)
         "crop": d["crop"],
         "condition": d["disease"],
         "status": status,
         "confidence": d["confidence"],
         "confidence_pct": f"{round(d['confidence'] * 100, 2)}%",
-        # Extended fields for UI
         "disease": d["disease"],
         "healthy": d["healthy"],
         "severity": d["severity"],
@@ -269,17 +269,66 @@ async def predict_disease(file: UploadFile = File(...)):
         "analyzedAt": datetime.now(timezone.utc).isoformat(),
         "imageUrl": data_url,
         "classProbabilities": d["classProbabilities"],
-        "recommendations": {
-            "immediateActions": d["immediateActions"],
-            "treatmentPlan": d["treatmentPlan"],
-            "prevention": d["prevention"],
-            "monitoringAdvice": d["monitoringAdvice"],
-        },
-        # Model metadata
+        "recommendations": recs,
         "model": "EfficientNet-B3",
         "dataset": "PlantVillage (38 classes, 54,305 images)",
         "input_size": "224x224",
     }
+
+
+def _groq_recommendations(crop: str, disease: str, healthy: bool) -> dict:
+    """Call Groq to generate structured treatment recommendations. Falls back to KB data."""
+    api_key = os.getenv("LLM_API_KEY")
+    kb_key = disease.lower().replace(" ", "_")
+    kb = next((v for k, v in _DISEASE_KB.items() if k in kb_key or kb_key in k), _DISEASE_KB["healthy"])
+    fallback = {
+        "immediateActions": kb["immediateActions"],
+        "treatmentPlan": kb["treatmentPlan"],
+        "prevention": kb["prevention"],
+        "monitoringAdvice": kb["monitoringAdvice"],
+    }
+    if not api_key:
+        return fallback
+
+    status_str = "Healthy" if healthy else "Disease Detected"
+    prompt = (
+        f"You are an expert agricultural plant pathologist. A farmer's crop has been diagnosed.\n"
+        f"Crop: {crop}\nDisease: {disease}\nStatus: {status_str}\n\n"
+        "Provide actionable recommendations in this EXACT JSON format (no markdown, no extra text):\n"
+        '{"immediateActions": ["action1", "action2", "action3"],\n'
+        ' "treatmentPlan": ["step1", "step2", "step3"],\n'
+        ' "prevention": ["tip1", "tip2", "tip3"],\n'
+        ' "monitoringAdvice": ["advice1", "advice2"]}\n'
+        "Each item must be a practical, specific, single sentence. Return only valid JSON."
+    )
+
+    try:
+        r = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": os.getenv("LLM_MODEL", "llama-3.3-70b-versatile"),
+                "temperature": 0.3,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=20,
+        )
+        r.raise_for_status()
+        content = r.json()["choices"][0]["message"]["content"].strip()
+        # Strip markdown code fences if present
+        if content.startswith("```"):
+            content = content.split("```")[1]
+            if content.startswith("json"):
+                content = content[4:]
+        parsed = json.loads(content)
+        return {
+            "immediateActions": parsed.get("immediateActions", fallback["immediateActions"]),
+            "treatmentPlan": parsed.get("treatmentPlan", fallback["treatmentPlan"]),
+            "prevention": parsed.get("prevention", fallback["prevention"]),
+            "monitoringAdvice": parsed.get("monitoringAdvice", fallback["monitoringAdvice"]),
+        }
+    except Exception:
+        return fallback
 
 
 @app.get("/api/diagnosis/history", tags=["Core - Crop Disease Detection"])
