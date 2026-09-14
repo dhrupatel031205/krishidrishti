@@ -126,11 +126,20 @@ export default function DiagnosisHistoryPage() {
                   filteredItems.map((item) => (
                     <tr key={item.id} className="hover:bg-stone-50/70 transition-colors">
                       <td className="px-6 py-4">
-                        <img
-                          src={item.imageUrl}
-                          alt={item.diagnosis}
-                          className="h-12 w-12 rounded-lg object-cover border border-stone-200"
-                        />
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.diagnosis}
+                            className="h-12 w-12 rounded-lg object-cover border border-stone-200"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = "none";
+                              (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                            }}
+                          />
+                        ) : null}
+                        <div className={`h-12 w-12 rounded-lg border border-stone-200 bg-stone-100 flex items-center justify-center ${item.imageUrl ? "hidden" : ""}`}>
+                          <span className="text-xs text-stone-400">N/A</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-semibold text-stone-900">{item.crop}</div>
