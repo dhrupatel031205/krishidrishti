@@ -459,7 +459,15 @@ def recommend_crop(data: SoilInput):
     pred = model.predict(row)[0]
     result = {"recommended_crop": str(pred)}
     if hasattr(model, "predict_proba"):
-        result["confidence"] = round(float(max(model.predict_proba(row)[0])), 3)
+        proba = model.predict_proba(row)[0]
+        classes = bundle.get("classes", model.classes_)
+        result["confidence"] = round(float(max(proba)), 3)
+        # Return top 3 crops by probability
+        top3_idx = sorted(range(len(proba)), key=lambda i: proba[i], reverse=True)[:3]
+        result["top_crops"] = [
+            {"crop": str(classes[i]), "confidence": round(float(proba[i]), 3)}
+            for i in top3_idx
+        ]
     return result
 
 
@@ -585,9 +593,9 @@ def sustainability_score(d: SustainabilityInput):
 
 LANG_NAME = {"hi": "Hindi", "gu": "Gujarati", "en": "English"}
 GREETING = {"hi": "आपकी खेती की सलाह:", "gu": "તમારી ખેતી સલાહ:", "en": "Farm Advisory:"}
-LABEL_CROP = {"hi": "अनुशंसित फसल", "gu": "ભલામણ કરેલ પાક"}
-LABEL_IRRIG = {"hi": "सिंचाई", "gu": "સિંચાઈ"}
-LABEL_DISEASE = {"hi": "रोग", "gu": "રોગ"}
+LABEL_CROP = {"hi": "अनुशंसित फसल", "gu": "ભલામણ કરેલ પાક", "en": "Recommended Crop"}
+LABEL_IRRIG = {"hi": "सिंचाई", "gu": "સિંચાઈ", "en": "Irrigation"}
+LABEL_DISEASE = {"hi": "रोग", "gu": "રોગ", "en": "Disease"}
 
 # disease -> {hi, gu} precaution
 DISEASE_KB = {
@@ -611,7 +619,8 @@ DISEASE_KB = {
         "gu": "કોઈ રોગ મળ્યો નથી — નિયમિત દેખરેખ અને સંતુલિત પોષણ ચાલુ રાખો."},
 }
 DEFAULT_CARE = {"hi": "उपचार हेतु स्थानीय कृषि सलाह लें।",
-                "gu": "સારવાર માટે સ્થાનિક કૃષિ સલાહ લો."}
+                "gu": "સારવાર માટે સ્થાનિક કૃષિ સલાહ લો.",
+                "en": "Consult your local agricultural extension officer for treatment advice."}
 
 
 class AssistantInput(BaseModel):
@@ -624,12 +633,13 @@ class AssistantInput(BaseModel):
 def _facts(d: AssistantInput, lang: str) -> str:
     lines = []
     if d.disease:
-        care = DISEASE_KB.get(d.disease.strip().lower(), DEFAULT_CARE)[lang]
-        lines.append(f"{LABEL_DISEASE[lang]}: {d.disease} - {care}")
+        kb_entry = DISEASE_KB.get(d.disease.strip().lower(), DEFAULT_CARE)
+        care = kb_entry.get(lang) or kb_entry.get("en") or list(kb_entry.values())[0]
+        lines.append(f"{LABEL_DISEASE.get(lang, 'Disease')}: {d.disease} - {care}")
     if d.recommended_crop:
-        lines.append(f"{LABEL_CROP[lang]}: {d.recommended_crop}")
+        lines.append(f"{LABEL_CROP.get(lang, 'Recommended Crop')}: {d.recommended_crop}")
     if d.irrigation_action:
-        lines.append(f"{LABEL_IRRIG[lang]}: {d.irrigation_action}")
+        lines.append(f"{LABEL_IRRIG.get(lang, 'Irrigation')}: {d.irrigation_action}")
     return "\n".join(lines) if lines else "-"
 
 

@@ -119,21 +119,23 @@ export async function getCropRecommendations(input: CropRecommendationInput): Pr
   if (!response.ok) throw new Error("Crop recommendation engine error");
   const data = await response.json();
 
-  // Map bonus backend response to frontend CropRecommendationResult[]
-  return [
-    {
-      id: "rec-live-1",
-      cropName: data.recommended_crop,
-      suitabilityScore: Math.round((data.confidence ?? 0.9) * 100),
-      expectedYield: "Varies by region",
-      waterRequirement: "Medium" as const,
-      growthDurationDays: 120,
-      sustainabilityRating: Math.round((data.confidence ?? 0.9) * 100),
-      reason: `ML model recommends ${data.recommended_crop} with ${Math.round((data.confidence ?? 0.9) * 100)}% confidence based on your soil parameters.`,
-      advantages: [`Best fit for N:${input.nitrogen} P:${input.phosphorus} K:${input.potassium} at pH ${input.ph}`],
-      risks: [],
-    },
+  // Build top results — primary from model, extras from top_crops if returned
+  const topCrops: Array<{ crop: string; confidence: number }> = data.top_crops || [
+    { crop: data.recommended_crop, confidence: data.confidence ?? 0.9 },
   ];
+
+  return topCrops.map((item, idx) => ({
+    id: `rec-live-${idx + 1}`,
+    cropName: item.crop,
+    suitabilityScore: Math.round(item.confidence * 100),
+    expectedYield: "Varies by region",
+    waterRequirement: "Medium" as const,
+    growthDurationDays: 120,
+    sustainabilityRating: Math.round(item.confidence * 100),
+    reason: `RandomForest model recommends ${item.crop} with ${Math.round(item.confidence * 100)}% confidence based on your soil parameters (N:${input.nitrogen} P:${input.phosphorus} K:${input.potassium}, pH:${input.ph}).`,
+    advantages: [`Optimized for N:${input.nitrogen} P:${input.phosphorus} K:${input.potassium} at pH ${input.ph} and ${input.temperature}°C`],
+    risks: [],
+  }));
 }
 
 // ==========================================
