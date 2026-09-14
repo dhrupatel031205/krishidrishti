@@ -9,6 +9,7 @@ import {
   Droplets, Clock, Waves, Gauge, AlertTriangle,
   PlayCircle, PauseCircle, RefreshCw, CloudRain, Sprout,
 } from "lucide-react";
+import { PageLoader, InlineLoader } from "@/components/common/Loader";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceLine,
@@ -92,6 +93,7 @@ export default function IrrigationPage() {
             >
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </button>
+            {loading && data && <InlineLoader message="Refreshing..." />}
 
             <button
               onClick={() => setIrrigationActive((v) => !v)}
@@ -138,9 +140,19 @@ export default function IrrigationPage() {
           </div>
         </div>
 
-        {/* Loading */}
+        {/* Loading — first load */}
         {loading && !data && (
-          <div className="p-12 text-center text-stone-400">Loading irrigation telemetry...</div>
+          <PageLoader message="Loading irrigation telemetry..." />
+        )}
+
+        {/* Loading overlay — stage switch */}
+        {loading && data && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 backdrop-blur-sm">
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-stone-200 bg-white px-8 py-6 shadow-xl">
+              <span className="h-8 w-8 rounded-full border-4 border-stone-200 border-t-emerald-600 animate-spin" />
+              <span className="text-sm font-medium text-stone-600">Loading irrigation telemetry...</span>
+            </div>
+          </div>
         )}
 
         {data && (

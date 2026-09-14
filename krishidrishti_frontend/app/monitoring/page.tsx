@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { fetchSensorDashboard } from "@/lib/api/client";
 import { SensorDashboardData } from "@/types";
 import { StatCard, StatusBadge, SimulationBadge } from "@/components/common/StatCard";
+import { PageLoader } from "@/components/common/Loader";
 import {
   Activity,
   Radio,
@@ -47,7 +48,7 @@ export default function MonitoringPage() {
   if (!data) {
     return (
       <AppShell>
-        <div className="p-12 text-center text-stone-400">Loading IoT sensor telemetry...</div>
+        <PageLoader message="Loading IoT sensor telemetry..." />
       </AppShell>
     );
   }

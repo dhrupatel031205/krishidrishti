@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import {
   ScanLine,
   Compass,
@@ -15,9 +16,11 @@ import {
   ShieldCheck,
   CheckCircle2,
   ArrowUp,
+  LayoutDashboard,
 } from "lucide-react";
 
 export default function LandingPage() {
+  const { isSignedIn, isLoaded } = useAuth();
   const features = [
     {
       title: "AI Crop Disease Detection",
@@ -104,18 +107,30 @@ export default function LandingPage() {
           </Link>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="flex items-center gap-2 rounded-xl border border-stone-200/90 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-100/80 hover:text-stone-900 transition-colors"
-            >
-              Sign In
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-xl bg-emerald-800 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-900 transition-colors"
-            >
-              Get Started
-            </Link>
+            {isLoaded && isSignedIn ? (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 rounded-xl bg-emerald-800 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-900 transition-colors"
+              >
+                <LayoutDashboard className="h-3.5 w-3.5" />
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 rounded-xl border border-stone-200/90 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-100/80 hover:text-stone-900 transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="rounded-xl bg-emerald-800 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-900 transition-colors"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -137,20 +152,32 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            <Link
-              href="/signup"
-              className="flex items-center gap-2 rounded-xl bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-900 transition-all active:scale-[0.99]"
-            >
-              <ScanLine className="h-4 w-4" />
-              <span>Get Started Free</span>
-            </Link>
-            <Link
-              href="/login"
-              className="flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-6 py-3.5 text-sm font-semibold text-stone-800 shadow-xs hover:bg-stone-50 transition-all"
-            >
-              <span>Sign In</span>
-              <ArrowRight className="h-4 w-4 text-stone-500" />
-            </Link>
+            {isLoaded && isSignedIn ? (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 rounded-xl bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-900 transition-all active:scale-[0.99]"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                <span>Go to Dashboard</span>
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/signup"
+                  className="flex items-center gap-2 rounded-xl bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-900 transition-all active:scale-[0.99]"
+                >
+                  <ScanLine className="h-4 w-4" />
+                  <span>Get Started Free</span>
+                </Link>
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-6 py-3.5 text-sm font-semibold text-stone-800 shadow-xs hover:bg-stone-50 transition-all"
+                >
+                  <span>Sign In</span>
+                  <ArrowRight className="h-4 w-4 text-stone-500" />
+                </Link>
+              </>
+            )}
           </div>
         </div>
 
@@ -269,18 +296,30 @@ export default function LandingPage() {
             </p>
 
             <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href="/signup"
-                className="rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-md transition-all"
-              >
-                Create Free Account
-              </Link>
-              <Link
-                href="/login"
-                className="rounded-xl border border-stone-700 bg-stone-800 px-6 py-3.5 text-sm font-semibold text-white hover:bg-stone-700 transition-all"
-              >
-                Sign In
-              </Link>
+              {isLoaded && isSignedIn ? (
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-md transition-all"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Go to Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/signup"
+                    className="rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-md transition-all"
+                  >
+                    Create Free Account
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="rounded-xl border border-stone-700 bg-stone-800 px-6 py-3.5 text-sm font-semibold text-white hover:bg-stone-700 transition-all"
+                  >
+                    Sign In
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

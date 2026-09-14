@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { fetchSustainabilityReport } from "@/lib/api/client";
 import { SustainabilityReport } from "@/types";
 import { StatCard, SimulationBadge } from "@/components/common/StatCard";
+import { PageLoader } from "@/components/common/Loader";
 import {
   Leaf,
   Droplets,
@@ -26,7 +27,7 @@ export default function SustainabilityPage() {
   if (!report) {
     return (
       <AppShell>
-        <div className="p-12 text-center text-stone-400">Evaluating sustainability indices...</div>
+        <PageLoader message="Evaluating sustainability indices..." />
       </AppShell>
     );
   }

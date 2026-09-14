@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { StatCard, StatusBadge, SimulationBadge } from "@/components/common/StatCard";
+import { PageLoader } from "@/components/common/Loader";
 import { featureFlags } from "@/config/features";
 import {
   fetchDiagnosisHistory,
@@ -41,15 +42,26 @@ export default function DashboardPage() {
   const [sustainability, setSustainability] = useState<any>(null);
   const [sensors, setSensors] = useState<any>(null);
   const [briefings, setBriefings] = useState<any[]>([]);
+  const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
-    fetchDiagnosisHistory().then(setHistory);
-    if (featureFlags.irrigation) fetchIrrigationStatus().then(setIrrigation);
-    if (featureFlags.weather) fetchAgroWeather().then(setWeather);
-    if (featureFlags.sustainability) fetchSustainabilityReport().then(setSustainability);
-    if (featureFlags.monitoring) fetchSensorDashboard().then(setSensors);
-    if (featureFlags.advisor) fetchAdvisoryBriefings().then(setBriefings);
+    Promise.all([
+      fetchDiagnosisHistory().then(setHistory),
+      featureFlags.irrigation ? fetchIrrigationStatus().then(setIrrigation) : Promise.resolve(),
+      featureFlags.weather ? fetchAgroWeather().then(setWeather) : Promise.resolve(),
+      featureFlags.sustainability ? fetchSustainabilityReport().then(setSustainability) : Promise.resolve(),
+      featureFlags.monitoring ? fetchSensorDashboard().then(setSensors) : Promise.resolve(),
+      featureFlags.advisor ? fetchAdvisoryBriefings().then(setBriefings) : Promise.resolve(),
+    ]).finally(() => setPageLoading(false));
   }, []);
+
+  if (pageLoading) {
+    return (
+      <AppShell>
+        <PageLoader message="Loading farm dashboard..." />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>

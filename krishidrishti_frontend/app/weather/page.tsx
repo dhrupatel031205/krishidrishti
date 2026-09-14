@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { fetchAgroWeather } from "@/lib/api/client";
 import { AgroWeatherData } from "@/types";
 import { StatCard, SimulationBadge } from "@/components/common/StatCard";
+import { PageLoader } from "@/components/common/Loader";
 import {
   CloudSun, Thermometer, Droplets, CloudRain,
   ShieldAlert, AlertCircle, LocateFixed, Loader2,
@@ -126,10 +127,7 @@ export default function WeatherPage() {
 
         {/* Loading state */}
         {loading && !weather && (
-          <div className="p-12 text-center text-stone-400 flex items-center justify-center gap-2">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            Loading agro-weather intelligence...
-          </div>
+          <PageLoader message="Loading agro-weather intelligence..." />
         )}
 
         {weather && (
