@@ -231,12 +231,15 @@ export async function fetchIrrigationStatus(): Promise<IrrigationStatus> {
 // 4. WEATHER INTELLIGENCE API
 // ==========================================
 
-export async function fetchAgroWeather(): Promise<AgroWeatherData> {
+export async function fetchAgroWeather(lat?: number, lon?: number): Promise<AgroWeatherData> {
+  const useLat = lat ?? parseFloat(DEFAULT_LAT);
+  const useLon = lon ?? parseFloat(DEFAULT_LON);
+
   if (IS_SIMULATION_FORCED) {
     await new Promise((r) => setTimeout(r, 400));
-    return mockWeatherData;
+    return { ...mockWeatherData, location: lat ? `${useLat.toFixed(4)}, ${useLon.toFixed(4)}` : mockWeatherData.location };
   }
-  const response = await fetch(`${API_BASE_URL}/weather?lat=${DEFAULT_LAT}&lon=${DEFAULT_LON}`);
+  const response = await fetch(`${API_BASE_URL}/weather?lat=${useLat}&lon=${useLon}`);
   if (!response.ok) throw new Error("Failed to fetch agro-weather");
   const data = await response.json();
 
@@ -259,7 +262,7 @@ export async function fetchAgroWeather(): Promise<AgroWeatherData> {
   }));
 
   return {
-    location: `Lat ${DEFAULT_LAT}, Lon ${DEFAULT_LON}`,
+    location: `${useLat.toFixed(4)}°N, ${useLon.toFixed(4)}°E`,
     temperature: data.temperature ?? 0,
     humidity: data.humidity ?? 0,
     rainfallMm: data.rain_next_24h_mm ?? 0,
