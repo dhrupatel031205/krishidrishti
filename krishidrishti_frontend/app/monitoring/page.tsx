@@ -30,8 +30,18 @@ export default function MonitoringPage() {
   const [data, setData] = useState<SensorDashboardData | null>(null);
   const [isSimulatedMode, setIsSimulatedMode] = useState(true);
 
+  const loadData = () => {
+    fetchSensorDashboard().then((d) => {
+      setData(d);
+      setIsSimulatedMode(d.isSimulationMode);
+    });
+  };
+
   useEffect(() => {
-    fetchSensorDashboard().then(setData);
+    loadData();
+    // Auto-refresh every 30 seconds to simulate live telemetry
+    const interval = setInterval(loadData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   if (!data) {
@@ -62,7 +72,7 @@ export default function MonitoringPage() {
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setIsSimulatedMode(!isSimulatedMode)}
+              onClick={loadData}
               className="text-xs font-semibold rounded-xl border border-stone-300 bg-white px-3 py-2 text-stone-700 shadow-xs hover:bg-stone-50"
             >
               Mode: {isSimulatedMode ? "Simulated Sensors" : "Hardware LoRa Gateway"}

@@ -333,7 +333,7 @@ export const mockSustainabilityReport: SustainabilityReport = {
     waterEfficiency: {
       title: "Water Conservation & Precision",
       score: 88,
-      weight: 25,
+      weight: 40,
       benchmark: 70,
       status: "excellent",
       recommendations: [
@@ -344,7 +344,7 @@ export const mockSustainabilityReport: SustainabilityReport = {
     soilHealth: {
       title: "Soil Vitality & Organic Carbon",
       score: 82,
-      weight: 25,
+      weight: 15,
       benchmark: 65,
       status: "good",
       recommendations: [
@@ -355,7 +355,7 @@ export const mockSustainabilityReport: SustainabilityReport = {
     cropDiversity: {
       title: "Crop Diversity & Rotation",
       score: 79,
-      weight: 20,
+      weight: 15,
       benchmark: 60,
       status: "good",
       recommendations: [
@@ -366,7 +366,7 @@ export const mockSustainabilityReport: SustainabilityReport = {
     chemicalUsage: {
       title: "Chemical & Pesticide Rationalization",
       score: 86,
-      weight: 15,
+      weight: 30,
       benchmark: 55,
       status: "excellent",
       recommendations: [
@@ -377,7 +377,7 @@ export const mockSustainabilityReport: SustainabilityReport = {
     resourceEfficiency: {
       title: "Energy & Resource Efficiency",
       score: 85,
-      weight: 15,
+      weight: 0,
       benchmark: 60,
       status: "excellent",
       recommendations: [
