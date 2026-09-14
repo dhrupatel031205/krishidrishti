@@ -10,6 +10,7 @@ import {
   CloudSun, Thermometer, Droplets, CloudRain,
   ShieldAlert, AlertCircle, LocateFixed, Loader2,
 } from "lucide-react";
+import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 
 type LocationState = "idle" | "requesting" | "granted" | "denied" | "unsupported";
 
@@ -112,7 +113,28 @@ export default function WeatherPage() {
                 "📍 Loading..."
               )}
             </div>
-
+            {weather && (
+              <DownloadReportButton
+                reportTitle="Agro-Weather Report"
+                getData={() => ({
+                  location: cityName || weather.location,
+                  temperature: `${weather.temperature}°C`,
+                  humidity: `${weather.humidity}%`,
+                  precipitation: `${weather.rainfallMm} mm (next 24h)`,
+                  diseaseRiskScore: `${weather.diseaseRiskScore}/100`,
+                  diseaseRiskCategory: weather.diseaseRiskCategory,
+                  agriculturalAlerts: weather.agriculturalAlerts.map((a) => a.message),
+                  fiveDayForecast: weather.forecast.map((f) => ({
+                    day: f.day,
+                    tempMax: `${f.tempMax}°C`,
+                    tempMin: `${f.tempMin}°C`,
+                    humidity: `${f.humidity}%`,
+                    rainChance: `${f.rainChance}%`,
+                    condition: f.condition,
+                  })),
+                })}
+              />
+            )}
             {(locationState === "denied" || locationState === "idle") && (
               <button
                 onClick={requestLocation}

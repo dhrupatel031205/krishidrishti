@@ -34,6 +34,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 
 export default function DashboardPage() {
   const [history, setHistory] = useState<any[]>([]);
@@ -81,6 +82,44 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <DownloadReportButton
+              reportTitle="Farm Dashboard Summary"
+              getData={() => ({
+                ...(irrigation && {
+                  irrigation: {
+                    currentMoisture: `${irrigation.currentMoisture}%`,
+                    status: irrigation.status,
+                    nextIrrigation: irrigation.nextIrrigationTime,
+                  },
+                }),
+                ...(weather && {
+                  weather: {
+                    temperature: `${weather.temperature}°C`,
+                    humidity: `${weather.humidity}%`,
+                    diseaseRisk: `${weather.diseaseRiskCategory} (${weather.diseaseRiskScore}/100)`,
+                  },
+                }),
+                ...(sustainability && {
+                  sustainability: {
+                    score: `${sustainability.overallScore}/100`,
+                    grade: sustainability.grade,
+                  },
+                }),
+                recentDiagnoses: history.slice(0, 5).map((item: any) => ({
+                  crop: item.crop,
+                  diagnosis: item.diagnosis,
+                  severity: item.severity,
+                  confidence: `${Math.round(item.confidence * 100)}%`,
+                })),
+                ...(briefings.length > 0 && {
+                  topAdvisory: {
+                    priority: briefings[0]?.priority,
+                    title: briefings[0]?.title,
+                    action: briefings[0]?.recommendedAction,
+                  },
+                }),
+              })}
+            />
             <Link
               href="/diagnosis"
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 transition-colors"

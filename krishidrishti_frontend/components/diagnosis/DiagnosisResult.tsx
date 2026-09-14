@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Calendar,
 } from "lucide-react";
+import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 import { PredictionResponse } from "@/types";
 import { StatusBadge } from "@/components/common/StatCard";
 import { formatPercent } from "@/lib/utils";
@@ -71,6 +72,22 @@ export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
               status={isHealthy ? "healthy" : result.severity || "moderate"}
               size="md"
               label={isHealthy ? "Healthy" : `${result.severity?.toUpperCase()} SEVERITY`}
+            />
+            <DownloadReportButton
+              reportTitle="Crop Disease Diagnosis"
+              filename={`diagnosis_${result.crop.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.txt`}
+              getData={() => ({
+                crop: result.crop,
+                condition: result.condition || result.disease,
+                status: result.status,
+                confidence: result.confidence_pct || `${Math.round(result.confidence * 100)}%`,
+                severity: result.severity,
+                explanation: result.explanation,
+                analyzedAt: result.analyzedAt,
+                model: result.model,
+                classProbabilities: result.classProbabilities,
+                recommendations: result.recommendations,
+              })}
             />
             <button
               onClick={onReset}

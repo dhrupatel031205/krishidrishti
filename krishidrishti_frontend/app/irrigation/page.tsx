@@ -14,6 +14,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, ReferenceLine,
 } from "recharts";
+import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 
 const GROWTH_STAGES = [
   { value: "seedling",   label: "Seedling",   threshold: 40, desc: "0–2 weeks" },
@@ -120,7 +121,23 @@ export default function IrrigationPage() {
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </button>
             {loading && data && <InlineLoader message="Refreshing..." />}
-
+            {data && (
+              <DownloadReportButton
+                reportTitle="Irrigation Status Report"
+                getData={() => ({
+                  growthStage: currentStage.label,
+                  currentMoisture: `${data.currentMoisture}%`,
+                  targetRange: `${data.targetMoistureMin}% – ${data.targetMoistureMax}%`,
+                  status: data.status,
+                  waterRequired: `${data.waterRequirementLiters} L`,
+                  nextIrrigation: data.nextIrrigationTime,
+                  rainForecast: `${data.rainForecastMm ?? 0} mm`,
+                  irrigationReason: data.irrigationReason,
+                  lastReading: data.lastWatered,
+                  sensorHistory: data.history,
+                })}
+              />
+            )}
             <button
               onClick={() => setIrrigationActive((v) => !v)}
               className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold shadow-xs transition-colors ${

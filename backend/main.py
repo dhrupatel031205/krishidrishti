@@ -102,7 +102,7 @@ def _get_current_user(authorization: str = "") -> Optional[dict]:
 
 import joblib
 import requests
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -299,7 +299,7 @@ class UpdateProfileInput(BaseModel):
 
 
 @app.get("/api/auth/me", tags=["Auth"])
-def get_me(authorization: str = ""):
+def get_me(authorization: str = Header(default="", alias="Authorization")):
     payload = _get_current_user(authorization)
     if not payload:
         raise HTTPException(401, "Unauthorized")
@@ -313,7 +313,7 @@ def get_me(authorization: str = ""):
 
 
 @app.put("/api/auth/me", tags=["Auth"])
-def update_profile(data: UpdateProfileInput, authorization: str = ""):
+def update_profile(data: UpdateProfileInput, authorization: str = Header(default="", alias="Authorization")):
     payload = _get_current_user(authorization)
     if not payload:
         raise HTTPException(401, "Unauthorized")
@@ -330,7 +330,7 @@ def update_profile(data: UpdateProfileInput, authorization: str = ""):
 # =====================================================================
 
 @app.get("/api/diagnosis/history", tags=["Core - Crop Disease Detection"])
-def diagnosis_history(authorization: str = ""):
+def diagnosis_history(authorization: str = Header(default="", alias="Authorization")):
     db = get_db()
     payload = _get_current_user(authorization)
     user_id = payload["sub"] if payload else None
@@ -350,7 +350,7 @@ def diagnosis_history(authorization: str = ""):
 
 
 @app.put("/api/diagnosis/{diagnosis_id}/status", tags=["Core - Crop Disease Detection"])
-def update_diagnosis_status(diagnosis_id: str, status: str = Query(...), authorization: str = ""):
+def update_diagnosis_status(diagnosis_id: str, status: str = Query(...), authorization: str = Header(default="", alias="Authorization")):
     payload = _get_current_user(authorization)
     if not payload:
         raise HTTPException(401, "Unauthorized")
@@ -365,7 +365,7 @@ def update_diagnosis_status(diagnosis_id: str, status: str = Query(...), authori
 
 
 @app.delete("/api/diagnosis/{diagnosis_id}", tags=["Core - Crop Disease Detection"])
-def delete_diagnosis(diagnosis_id: str, authorization: str = ""):
+def delete_diagnosis(diagnosis_id: str, authorization: str = Header(default="", alias="Authorization")):
     payload = _get_current_user(authorization)
     if not payload:
         raise HTTPException(401, "Unauthorized")
@@ -386,7 +386,7 @@ class SaveChatInput(BaseModel):
 
 
 @app.post("/api/chat/save", tags=["E - Farmer Assistant"])
-def save_chat(data: SaveChatInput, authorization: str = ""):
+def save_chat(data: SaveChatInput, authorization: str = Header(default="", alias="Authorization")):
     payload = _get_current_user(authorization)
     if not payload:
         raise HTTPException(401, "Unauthorized")
@@ -403,7 +403,7 @@ def save_chat(data: SaveChatInput, authorization: str = ""):
 
 
 @app.get("/api/chat/history", tags=["E - Farmer Assistant"])
-def get_chat_history(authorization: str = ""):
+def get_chat_history(authorization: str = Header(default="", alias="Authorization")):
     payload = _get_current_user(authorization)
     if not payload:
         raise HTTPException(401, "Unauthorized")
@@ -415,7 +415,7 @@ def get_chat_history(authorization: str = ""):
 
 
 @app.delete("/api/chat/{session_id}", tags=["E - Farmer Assistant"])
-def delete_chat_session(session_id: str, authorization: str = ""):
+def delete_chat_session(session_id: str, authorization: str = Header(default="", alias="Authorization")):
     payload = _get_current_user(authorization)
     if not payload:
         raise HTTPException(401, "Unauthorized")
@@ -431,7 +431,7 @@ def delete_chat_session(session_id: str, authorization: str = ""):
 # =====================================================================
 
 @app.get("/api/recommendations/history", tags=["A - Crop Recommendation"])
-def get_recommendation_history(authorization: str = ""):
+def get_recommendation_history(authorization: str = Header(default="", alias="Authorization")):
     payload = _get_current_user(authorization)
     if not payload:
         raise HTTPException(401, "Unauthorized")
@@ -443,7 +443,7 @@ def get_recommendation_history(authorization: str = ""):
 
 
 @app.delete("/api/recommendations/{rec_id}", tags=["A - Crop Recommendation"])
-def delete_recommendation(rec_id: str, authorization: str = ""):
+def delete_recommendation(rec_id: str, authorization: str = Header(default="", alias="Authorization")):
     payload = _get_current_user(authorization)
     if not payload:
         raise HTTPException(401, "Unauthorized")
@@ -459,7 +459,7 @@ def delete_recommendation(rec_id: str, authorization: str = ""):
 # =====================================================================
 
 @app.get("/api/sensor/history", tags=["F - IoT (simulated)"])
-def get_sensor_history(n: int = Query(24, ge=1, le=200), authorization: str = ""):
+def get_sensor_history(n: int = Query(24, ge=1, le=200), authorization: str = Header(default="", alias="Authorization")):
     payload = _get_current_user(authorization)
     if not payload:
         raise HTTPException(401, "Unauthorized")
@@ -905,7 +905,7 @@ def _validate_plant_image(image_bytes: bytes) -> tuple[bool, str]:
 
 
 @app.post("/api/predict", tags=["Core - Crop Disease Detection"])
-async def predict_disease(file: UploadFile = File(...), authorization: str = ""):
+async def predict_disease(file: UploadFile = File(...), authorization: str = Header(default="", alias="Authorization")):
     """Accepts a leaf image and returns a structured disease diagnosis."""
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=422, detail="Only image files are accepted.")
@@ -1149,7 +1149,7 @@ class SoilInput(BaseModel):
 
 
 @app.post("/recommend-crop", tags=["A - Crop Recommendation"])
-def recommend_crop(data: SoilInput, authorization: str = ""):
+def recommend_crop(data: SoilInput, authorization: str = Header(default="", alias="Authorization")):
     try:
         bundle = _load_crop()
     except FileNotFoundError as e:
@@ -1447,7 +1447,7 @@ def _reading_at(dt: datetime, state: dict) -> dict:
 
 
 @app.get("/sensor-feed", tags=["F - IoT (simulated)"])
-def sensor_feed(n: int = Query(1, ge=1, le=50), authorization: str = ""):
+def sensor_feed(n: int = Query(1, ge=1, le=50), authorization: str = Header(default="", alias="Authorization")):
     """Returns the last n readings, 10 min apart, ending now (a live stream)."""
     now = datetime.now(timezone.utc)
     readings = [_reading_at(now - timedelta(minutes=10 * (n - 1 - i)), _sensor_state)

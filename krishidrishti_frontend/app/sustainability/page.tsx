@@ -7,6 +7,7 @@ import { PageLoader } from "@/components/common/Loader";
 import {
   Leaf, Award, Droplets, FlaskConical, Sprout, Zap, RefreshCw, AlertTriangle, CheckCircle2,
 } from "lucide-react";
+import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -174,6 +175,24 @@ export default function SustainabilityPage() {
               Enter your actual resource usage to compute a live sustainability score from the backend engine.
             </p>
           </div>
+          {report && (
+            <DownloadReportButton
+              reportTitle="Farm Sustainability Report"
+              getData={() => ({
+                overallScore: `${report.overallScore}/100`,
+                grade: report.grade,
+                band: report.band,
+                waterSaved: `${report.waterSavedLiters.toLocaleString()} L`,
+                carbonOffsetEstimate: `${report.carbonOffsetKg.toLocaleString()} kg CO₂`,
+                inputs: form,
+                pillars: report.pillars.map((p) => ({
+                  title: p.title,
+                  score: `${p.score}%`,
+                  recommendations: p.recommendations,
+                })),
+              })}
+            />
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">

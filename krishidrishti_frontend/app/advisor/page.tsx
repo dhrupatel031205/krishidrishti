@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Brain,
 } from "lucide-react";
+import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 
 export default function AdvisorPage() {
   const [briefings, setBriefings] = useState<AdvisoryBriefing[]>([]);
@@ -60,6 +61,23 @@ export default function AdvisorPage() {
               Autonomous reasoning engine synthesizing multi-modal signals: leaf pathology, radar precipitation, sensor hydrology, and crop market windows.
             </p>
           </div>
+          {briefings.length > 0 && (
+            <DownloadReportButton
+              reportTitle="Agentic Advisor Briefings"
+              getData={() => ({
+                dailyBriefing: "Prioritize Foliar Pathogen Containment Before Inbound Showers",
+                recommendations: briefings.map((b) => ({
+                  priority: b.priority,
+                  title: b.title,
+                  reason: b.reason,
+                  recommendedAction: b.recommendedAction,
+                  estimatedImpact: b.estimatedImpact,
+                  dataSources: b.dataSources,
+                  status: b.status,
+                })),
+              })}
+            />
+          )}
         </div>
 
         {/* Daily Farm Briefing Hero Banner */}

@@ -16,6 +16,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { useLanguage } from "@/lib/context/LanguageContext";
+import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 
 export default function RecommendationsPage() {
   const { t } = useLanguage();
@@ -64,6 +65,26 @@ export default function RecommendationsPage() {
               {t("recDesc")}
             </p>
           </div>
+          {recommendations && (
+            <DownloadReportButton
+              reportTitle="Crop Recommendations"
+              getData={() => ({
+                soilParameters: form,
+                recommendations: recommendations.map((r) => ({
+                  rank: recommendations.indexOf(r) + 1,
+                  crop: r.cropName,
+                  suitabilityScore: `${r.suitabilityScore}%`,
+                  expectedYield: r.expectedYield,
+                  waterRequirement: r.waterRequirement,
+                  growthDays: r.growthDurationDays,
+                  sustainabilityRating: r.sustainabilityRating,
+                  reason: r.reason,
+                  advantages: r.advantages,
+                  risks: r.risks,
+                })),
+              })}
+            />
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">

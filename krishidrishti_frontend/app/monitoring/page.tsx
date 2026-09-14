@@ -26,6 +26,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 
 export default function MonitoringPage() {
   const [data, setData] = useState<SensorDashboardData | null>(null);
@@ -78,6 +79,24 @@ export default function MonitoringPage() {
             >
               Mode: {isSimulatedMode ? "Simulated Sensors" : "Hardware LoRa Gateway"}
             </button>
+            {data && (
+              <DownloadReportButton
+                reportTitle="IoT Sensor Telemetry Report"
+                getData={() => ({
+                  mode: isSimulatedMode ? "Simulated" : "Hardware LoRa Gateway",
+                  sensors: data.sensors.map((s) => ({
+                    id: s.id,
+                    name: s.name,
+                    type: s.type,
+                    currentValue: `${s.currentValue} ${s.unit}`,
+                    status: s.status,
+                    battery: `${s.batteryPercent}%`,
+                    lastUpdated: s.lastUpdated,
+                  })),
+                  telemetryHistory: data.telemetryHistory,
+                })}
+              />
+            )}
           </div>
         </div>
 

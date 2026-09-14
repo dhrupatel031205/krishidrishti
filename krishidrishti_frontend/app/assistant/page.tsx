@@ -13,6 +13,7 @@ import {
   User,
   RefreshCw,
 } from "lucide-react";
+import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 
 const ASSISTANT_UI = {
   en: {
@@ -95,6 +96,18 @@ export default function AssistantPage() {
               {ui.subtitle}
             </p>
           </div>
+          {messages.length > 1 && (
+            <DownloadReportButton
+              reportTitle="AI Assistant Chat Export"
+              getData={() => ({
+                conversation: messages.map((m) => ({
+                  role: m.sender === "user" ? "User" : "Assistant",
+                  message: m.content,
+                  time: m.timestamp,
+                })),
+              })}
+            />
+          )}
         </div>
 
         {/* Chat Stream Window */}
