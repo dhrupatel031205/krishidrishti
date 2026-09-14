@@ -2,14 +2,13 @@
 
 import React, { useState } from "react";
 import {
-  AlertTriangle,
-  CheckCircle2,
   Info,
   Layers,
   Sparkles,
   ClipboardList,
+  Download,
+  Loader2,
 } from "lucide-react";
-import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 import { PredictionResponse } from "@/types";
 import { StatusBadge } from "@/components/common/StatCard";
 import { formatPercent } from "@/lib/utils";
@@ -22,6 +21,201 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+interface DiagnosisResultProps {
+  result: PredictionResponse;
+  onReset: () => void;
+}
+
+const E: [number, number, number] = [27, 67, 50];
+const E2: [number, number, number] = [52, 211, 153];
+const DARK: [number, number, number] = [30, 30, 30];
+const GRAY: [number, number, number] = [100, 100, 100];
+
+async function generateDiagnosisPDF(result: PredictionResponse, recs: NonNullable<PredictionResponse["recommendations"]>) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const W = doc.internal.pageSize.getWidth();
+  const generatedAt = new Date().toLocaleString();
+
+  // ── Header ──
+  doc.setFillColor(...E);
+  doc.rect(0, 0, W, 42, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.setTextColor(255, 255, 255);
+  doc.text("KrishiDrishti", 14, 18);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...E2);
+  doc.text("AI-Powered Precision Agriculture Platform", 14, 26);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Crop Disease Diagnosis Report", W - 14, 18, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(...E2);
+  doc.text(`Generated: ${generatedAt}`, W - 14, 26, { align: "right" });
+  doc.setDrawColor(...E2);
+  doc.setLineWidth(0.4);
+  doc.line(0, 42, W, 42);
+
+  let y = 52;
+
+  // ── Section 1: Diagnosis Summary ──
+  doc.setFillColor(...E);
+  doc.rect(14, y, W - 28, 7, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text("DIAGNOSIS SUMMARY", 18, y + 5);
+  y += 11;
+
+  const summaryRows = [
+    ["Crop", result.crop],
+    ["Detected Condition", result.condition || result.disease || "—"],
+    ["Status", result.status || (result.healthy ? "Healthy" : "Disease Detected")],
+    ["Confidence", result.confidence_pct || `${Math.round(result.confidence * 100)}%`],
+    ["Severity", result.severity ? result.severity.toUpperCase() : "—"],
+    ["Analyzed At", result.analyzedAt ? new Date(result.analyzedAt).toLocaleString() : generatedAt],
+  ];
+
+  autoTable(doc, {
+    startY: y,
+    body: summaryRows,
+    columnStyles: { 0: { fontStyle: "bold", cellWidth: 50, fillColor: [248, 250, 248] }, 1: { cellWidth: "auto" } },
+    styles: { fontSize: 9, cellPadding: 3 },
+    margin: { left: 14, right: 14 },
+    theme: "plain",
+    tableLineColor: [220, 220, 220],
+    tableLineWidth: 0.2,
+  });
+  y = (doc as any).lastAutoTable.finalY + 8;
+
+  // ── Section 2: Pathology Explanation ──
+  if (result.explanation) {
+    doc.setFillColor(...E);
+    doc.rect(14, y, W - 28, 7, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text("PATHOLOGY EXPLANATION", 18, y + 5);
+    y += 11;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...DARK);
+    const lines = doc.splitTextToSize(result.explanation, W - 28);
+    doc.text(lines, 14, y);
+    y += lines.length * 5 + 8;
+  }
+
+  // ── Section 3: Class Probabilities ──
+  if (result.classProbabilities && result.classProbabilities.length > 0) {
+    if (y > 230) { doc.addPage(); y = 20; }
+    doc.setFillColor(...E);
+    doc.rect(14, y, W - 28, 7, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text("TOP PREDICTION PROBABILITIES", 18, y + 5);
+    y += 11;
+
+    autoTable(doc, {
+      startY: y,
+      head: [["Rank", "Disease / Condition", "Probability"]],
+      body: result.classProbabilities.map((cp, i) => [
+        `#${i + 1}`,
+        cp.className,
+        `${Math.round(cp.probability * 100)}%`,
+      ]),
+      headStyles: { fillColor: E, textColor: 255, fontSize: 8 },
+      styles: { fontSize: 8.5, cellPadding: 2.5 },
+      columnStyles: { 0: { cellWidth: 14 }, 2: { cellWidth: 28, halign: "center" } },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as any).lastAutoTable.finalY + 8;
+  }
+
+  // ── Section 4: Recommendations ──
+  const recSections: [string, string[]][] = [
+    ["IMMEDIATE ACTIONS", recs.immediateActions],
+    ["TREATMENT PLAN", recs.treatmentPlan],
+    ["PREVENTION", recs.prevention],
+    ["MONITORING ADVICE", recs.monitoringAdvice],
+  ];
+
+  for (const [title, items] of recSections) {
+    if (!items || items.length === 0) continue;
+    if (y > 230) { doc.addPage(); y = 20; }
+
+    doc.setFillColor(...E);
+    doc.rect(14, y, W - 28, 7, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text(title, 18, y + 5);
+    y += 11;
+
+    items.forEach((item, idx) => {
+      if (y > 265) { doc.addPage(); y = 20; }
+      // Numbered bullet
+      doc.setFillColor(...E);
+      doc.circle(18, y - 1, 2.5, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor(255, 255, 255);
+      doc.text(String(idx + 1), 18, y + 0.5, { align: "center" });
+      // Item text
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...DARK);
+      const lines = doc.splitTextToSize(item, W - 42);
+      doc.text(lines, 24, y);
+      y += lines.length * 5 + 3;
+    });
+    y += 4;
+  }
+
+  // ── Footer on all pages ──
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    const H = doc.internal.pageSize.getHeight();
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.line(14, H - 12, W - 14, H - 12);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(160, 160, 160);
+    doc.text("KrishiDrishti AI  •  Verify with local agronomist before major interventions.", 14, H - 7);
+    doc.text(`Page ${i} of ${totalPages}`, W - 14, H - 7, { align: "right" });
+  }
+
+  doc.save(`diagnosis_${result.crop.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+function DiagnosisDownloadButton({ result, recs }: { result: PredictionResponse; recs: NonNullable<PredictionResponse["recommendations"]> }) {
+  const [loading, setLoading] = useState(false);
+  const handleClick = async () => {
+    setLoading(true);
+    try { await generateDiagnosisPDF(result, recs); }
+    catch (e) { console.error("PDF error:", e); }
+    finally { setLoading(false); }
+  };
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-emerald-600 text-emerald-700 hover:bg-emerald-50 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500"
+    >
+      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+      {loading ? "Generating..." : "Download Report"}
+    </button>
+  );
+}
 
 interface DiagnosisResultProps {
   result: PredictionResponse;
@@ -78,21 +272,7 @@ export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
               size="md"
               label={isHealthy ? "Healthy" : `${result.severity?.toUpperCase()} SEVERITY`}
             />
-            <DownloadReportButton
-              reportTitle="Crop Disease Diagnosis"
-              filename={`diagnosis_${result.crop.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`}
-              getData={() => ({
-                crop: result.crop,
-                condition: result.condition || result.disease,
-                status: result.status,
-                confidence: result.confidence_pct || `${Math.round(result.confidence * 100)}%`,
-                severity: result.severity,
-                explanation: result.explanation,
-                analyzedAt: result.analyzedAt,
-                classProbabilities: result.classProbabilities,
-                recommendations: result.recommendations,
-              })}
-            />
+            <DiagnosisDownloadButton result={result} recs={recs} />
             <button
               onClick={onReset}
               className="rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 shadow-xs"
