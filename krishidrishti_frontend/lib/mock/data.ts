@@ -206,60 +206,65 @@ export const mockDiagnosisHistory: DiagnosisHistoryItem[] = [
 // ==========================================
 
 export function calculateMockCropRecommendations(input: CropRecommendationInput): CropRecommendationResult[] {
-  return [
-    {
-      id: "rec-1",
-      cropName: "Chickpea (Gram / Chana)",
-      suitabilityScore: 94,
-      expectedYield: "2.2 - 2.8 Tonnes / Hectare",
-      waterRequirement: "Low",
-      growthDurationDays: 105,
-      sustainabilityRating: 95,
-      reason: `Highly aligned with current soil NPK (${input.nitrogen}:${input.phosphorus}:${input.potassium}) and pH ${input.ph}. Nitrogen-fixing nodules will actively enrich soil vitality for subsequent crop cycles.`,
-      advantages: [
-        "Biological Nitrogen Fixation restores soil nitrogen bank",
-        "Deep taproot utilizes residual subsoil moisture efficiently",
-        "High market price stability and MSP procurement support"
-      ],
-      risks: [
-        "Excess moisture at flowering may trigger Ascochyta blight"
-      ]
-    },
-    {
-      id: "rec-2",
-      cropName: "Mustard (Brassica juncea)",
-      suitabilityScore: 88,
-      expectedYield: "1.8 - 2.4 Tonnes / Hectare",
-      waterRequirement: "Low",
-      growthDurationDays: 115,
-      sustainabilityRating: 86,
-      reason: `Optimal for current thermal band (${input.temperature}°C) and soil pH ${input.ph}. Requires only 2-3 light irrigations during growth phase.`,
-      advantages: [
-        "Low input cost and minimal synthetic fertilizer need",
-        "Natural bio-fumigant effect against soil pathogens"
-      ],
-      risks: [
-        "Vulnerable to aphid attacks if temperatures spike early February"
-      ]
-    },
-    {
-      id: "rec-3",
-      cropName: "Wheat (HD-2967 / PBW-502)",
-      suitabilityScore: 81,
-      expectedYield: "4.5 - 5.2 Tonnes / Hectare",
-      waterRequirement: "Medium",
-      growthDurationDays: 135,
-      sustainabilityRating: 78,
-      reason: "Solid staple yield potential given current potassium levels, though requires structured irrigation at Crown Root Initiation stage.",
-      advantages: [
-        "Reliable baseline economic returns",
-        "Readily available mechanized harvesting support"
-      ],
-      risks: [
-        "Sensitive to terminal heat stress during grain filling stage"
-      ]
-    }
-  ];
+  // Soil-type specific crop pools
+  const SOIL_CROPS: Record<string, Array<{ cropName: string; score: number; yield: string; water: "Low" | "Medium" | "High"; days: number; advantages: string[]; risks: string[] }>> = {
+    "Loamy Soil": [
+      { cropName: "Chickpea (Gram / Chana)", score: 94, yield: "2.2–2.8 T/ha", water: "Low", days: 105, advantages: ["Nitrogen-fixing nodules enrich soil", "High MSP procurement support"], risks: ["Excess moisture triggers Ascochyta blight"] },
+      { cropName: "Mustard (Brassica juncea)", score: 88, yield: "1.8–2.4 T/ha", water: "Low", days: 115, advantages: ["Low input cost", "Natural bio-fumigant effect"], risks: ["Vulnerable to aphid attacks in warm spells"] },
+      { cropName: "Wheat (HD-2967 / PBW-502)", score: 81, yield: "4.5–5.2 T/ha", water: "Medium", days: 135, advantages: ["Reliable staple returns", "Mechanized harvesting support"], risks: ["Sensitive to terminal heat stress"] },
+    ],
+    "Clayey Loam": [
+      { cropName: "Rice (Paddy)", score: 92, yield: "4.0–5.5 T/ha", water: "High", days: 120, advantages: ["Thrives in water-retentive clay", "Strong MSP support"], risks: ["High water consumption"] },
+      { cropName: "Sugarcane", score: 85, yield: "60–80 T/ha", water: "High", days: 365, advantages: ["High revenue per hectare", "Clay retains moisture well"], risks: ["Long crop cycle, high water demand"] },
+      { cropName: "Soybean", score: 78, yield: "1.5–2.5 T/ha", water: "Medium", days: 100, advantages: ["Nitrogen fixer", "Good export demand"], risks: ["Susceptible to root rot in waterlogged clay"] },
+    ],
+    "Sandy Loam": [
+      { cropName: "Groundnut (Peanut)", score: 91, yield: "1.8–2.5 T/ha", water: "Low", days: 110, advantages: ["Excellent drainage suits sandy loam", "High oil content value"], risks: ["Susceptible to aflatoxin in dry spells"] },
+      { cropName: "Maize (Corn)", score: 86, yield: "3.5–5.0 T/ha", water: "Medium", days: 90, advantages: ["Fast growing cycle", "Versatile industrial use"], risks: ["Susceptible to stem borer"] },
+      { cropName: "Mung Bean", score: 79, yield: "1.0–1.8 T/ha", water: "Low", days: 65, advantages: ["Short cycle fits rotation", "High protein"], risks: ["Susceptible to yellow mosaic virus"] },
+    ],
+    "Black Cotton Soil": [
+      { cropName: "Cotton (Bt / Hybrid)", score: 93, yield: "1.5–2.5 T/ha", water: "Medium", days: 160, advantages: ["Black soil retains moisture for cotton", "Strong MSP & market demand"], risks: ["Susceptible to bollworm"] },
+      { cropName: "Sorghum (Jowar)", score: 84, yield: "2.0–3.5 T/ha", water: "Low", days: 110, advantages: ["Drought tolerant on black soil", "Dual-purpose grain & fodder"], risks: ["Susceptible to shoot fly"] },
+      { cropName: "Pigeon Pea (Tur/Arhar)", score: 77, yield: "1.2–2.0 T/ha", water: "Low", days: 150, advantages: ["Deep roots break hard black soil", "Nitrogen fixer"], risks: ["Long growing season"] },
+    ],
+  };
+
+  const pool = SOIL_CROPS[input.soilType] ?? SOIL_CROPS["Loamy Soil"];
+
+  // Adjust suitability scores based on NPK, pH, temperature, rainfall
+  return pool.map((crop, idx) => {
+    let score = crop.score;
+
+    // pH penalty/bonus
+    if (input.ph >= 6.0 && input.ph <= 7.5) score = Math.min(99, score + 2);
+    else if (input.ph < 5.5 || input.ph > 8.5) score = Math.max(40, score - 12);
+    else score = Math.max(50, score - 5);
+
+    // Nitrogen bonus for legumes
+    if (crop.water === "Low" && input.nitrogen < 40) score = Math.min(99, score + 3);
+
+    // Rainfall adjustment
+    if (crop.water === "High" && input.rainfall < 80) score = Math.max(40, score - 10);
+    if (crop.water === "Low" && input.rainfall > 200) score = Math.max(50, score - 6);
+
+    // Temperature adjustment
+    if (input.temperature > 35) score = Math.max(40, score - 8);
+    if (input.temperature < 15) score = Math.max(40, score - 6);
+
+    return {
+      id: `rec-${idx + 1}`,
+      cropName: crop.cropName,
+      suitabilityScore: score,
+      expectedYield: crop.yield,
+      waterRequirement: crop.water,
+      growthDurationDays: crop.days,
+      sustainabilityRating: Math.max(50, score - 5),
+      reason: `Recommended for ${input.soilType} with NPK ${input.nitrogen}:${input.phosphorus}:${input.potassium}, pH ${input.ph}, temp ${input.temperature}°C, and ${input.rainfall}mm rainfall.`,
+      advantages: crop.advantages,
+      risks: crop.risks,
+    };
+  }).sort((a, b) => b.suitabilityScore - a.suitabilityScore);
 }
 
 // ==========================================
@@ -462,17 +467,57 @@ export const mockAdvisories: AdvisoryBriefing[] = [
 // MOCK CHAT MESSAGES
 // ==========================================
 
-export const mockInitialChatMessages: ChatMessage[] = [
-  {
-    id: "msg-1",
-    sender: "assistant",
+const ASSISTANT_GREETINGS: Record<string, { content: string; followUps: string[] }> = {
+  en: {
     content: "Namaste! I am your **KrishiDrishti AI Farmer Assistant**. I am connected to your farm's crop diagnosis history, IoT sensors, soil metrics, and local weather station.\n\nHow can I assist your farming operations today?",
-    timestamp: "10:00 AM",
-    suggestedFollowUps: [
+    followUps: [
       "What disease does my tomato crop have and how to treat it?",
       "Should I irrigate today considering the rain forecast?",
       "Which crop is most profitable and sustainable for my soil?",
-      "How do I prevent blight spread in humid weather?"
-    ]
-  }
-];
+      "How do I prevent blight spread in humid weather?",
+    ],
+  },
+  hi: {
+    content: "नमस्ते! मैं आपका **KrishiDrishti AI किसान सहायक** हूँ। मैं आपके खेत के फसल निदान इतिहास, IoT सेंसर, मिट्टी के आँकड़े और स्थानीय मौसम केंद्र से जुड़ा हूँ।\n\nआज मैं आपकी खेती में कैसे मदद कर सकता हूँ?",
+    followUps: [
+      "मेरी टमाटर की फसल में कौन सी बीमारी है और उसका इलाज क्या है?",
+      "क्या आज बारिश के पूर्वानुमान को देखते हुए सिंचाई करनी चाहिए?",
+      "मेरी मिट्टी के लिए सबसे उपयुक्त और लाभदायक फसल कौन सी है?",
+      "नमी वाले मौसम में ब्लाइट को फैलने से कैसे रोकें?",
+    ],
+  },
+  pa: {
+    content: "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ ਤੁਹਾਡਾ **KrishiDrishti AI ਕਿਸਾਨ ਸਹਾਇਕ** ਹਾਂ। ਮੈਂ ਤੁਹਾਡੇ ਖੇਤ ਦੇ ਫ਼ਸਲ ਨਿਦਾਨ ਇਤਿਹਾਸ, IoT ਸੈਂਸਰਾਂ, ਮਿੱਟੀ ਦੇ ਅੰਕੜਿਆਂ ਅਤੇ ਸਥਾਨਕ ਮੌਸਮ ਕੇਂਦਰ ਨਾਲ ਜੁੜਿਆ ਹਾਂ।\n\nਅੱਜ ਮੈਂ ਤੁਹਾਡੀ ਖੇਤੀ ਵਿੱਚ ਕਿਵੇਂ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ?",
+    followUps: [
+      "ਮੇਰੀ ਟਮਾਟਰ ਦੀ ਫ਼ਸਲ ਵਿੱਚ ਕਿਹੜੀ ਬਿਮਾਰੀ ਹੈ ਅਤੇ ਇਲਾਜ ਕੀ ਹੈ?",
+      "ਕੀ ਅੱਜ ਮੀਂਹ ਦੇ ਅਨੁਮਾਨ ਨੂੰ ਦੇਖਦੇ ਹੋਏ ਸਿੰਚਾਈ ਕਰਨੀ ਚਾਹੀਦੀ ਹੈ?",
+      "ਮੇਰੀ ਮਿੱਟੀ ਲਈ ਸਭ ਤੋਂ ਢੁਕਵੀਂ ਫ਼ਸਲ ਕਿਹੜੀ ਹੈ?",
+      "ਨਮੀ ਵਾਲੇ ਮੌਸਮ ਵਿੱਚ ਬਲਾਈਟ ਨੂੰ ਫੈਲਣ ਤੋਂ ਕਿਵੇਂ ਰੋਕੀਏ?",
+    ],
+  },
+  te: {
+    content: "నమస్కారం! నేను మీ **KrishiDrishti AI రైతు సహాయకుడిని**. నేను మీ పొలం యొక్క పంట నిర్ధారణ చరిత్ర, IoT సెన్సార్లు, నేల డేటా మరియు స్థానిక వాతావరణ కేంద్రంతో అనుసంధానించబడి ఉన్నాను.\n\nఈరోజు మీ వ్యవసాయంలో నేను ఎలా సహాయపడగలను?",
+    followUps: [
+      "నా టమాటా పంటకు ఏ వ్యాధి వచ్చింది మరియు చికిత్స ఏమిటి?",
+      "వర్షం అంచనాను దృష్టిలో ఉంచుకుని ఈరోజు నీటిపారుదల చేయాలా?",
+      "నా నేలకు అత్యంత అనుకూలమైన మరియు లాభదాయకమైన పంట ఏది?",
+      "తేమ వాతావరణంలో బ్లైట్ వ్యాపించకుండా ఎలా నిరోధించాలి?",
+    ],
+  },
+};
+
+export function getInitialChatMessages(language = "en"): ChatMessage[] {
+  const greeting = ASSISTANT_GREETINGS[language] ?? ASSISTANT_GREETINGS.en;
+  return [
+    {
+      id: "msg-1",
+      sender: "assistant",
+      content: greeting.content,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      suggestedFollowUps: greeting.followUps,
+    },
+  ];
+}
+
+// Keep backward-compat export
+export const mockInitialChatMessages = getInitialChatMessages("en");

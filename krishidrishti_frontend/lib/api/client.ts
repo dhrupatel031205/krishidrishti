@@ -28,7 +28,7 @@ import {
   mockSustainabilityReport,
   mockSensorData,
   mockAdvisories,
-  mockInitialChatMessages,
+  getInitialChatMessages,
 } from "@/lib/mock/data";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -110,7 +110,7 @@ export async function getCropRecommendations(input: CropRecommendationInput): Pr
     return calculateMockCropRecommendations(input);
   }
 
-  // Map frontend input to bonus backend SoilInput schema
+  // Map frontend input to backend SoilInput schema
   const payload = {
     N: input.nitrogen,
     P: input.phosphorus,
@@ -119,6 +119,7 @@ export async function getCropRecommendations(input: CropRecommendationInput): Pr
     humidity: input.humidity,
     ph: input.ph,
     rainfall: input.rainfall,
+    soil_type: input.soilType,
   };
 
   const response = await fetch(`${API_BASE_URL}/recommend-crop`, {
@@ -438,11 +439,18 @@ export async function fetchAdvisoryBriefings(): Promise<AdvisoryBriefing[]> {
 // 8. AI FARMER ASSISTANT API
 // ==========================================
 
-export async function sendAssistantMessage(message: string, attachedImage?: string): Promise<ChatMessage> {
+export async function sendAssistantMessage(message: string, attachedImage?: string, language: string = "en", history: ChatMessage[] = []): Promise<ChatMessage> {
   if (IS_SIMULATION_FORCED) {
     await new Promise((r) => setTimeout(r, 1000));
-    
-    // Context-sensitive mock responses
+
+    // Build context from last few messages for smarter mock replies
+    const recentContext = history
+      .slice(-6)
+      .map((m) => `${m.sender === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n");
+    const msgLower = message.toLowerCase();
+    const contextLower = recentContext.toLowerCase();
+
     let reply = "Based on your farm's current data, your soil moisture is 38% and rainfall is expected within 36 hours. I recommend holding your scheduled evening irrigation to conserve water.";
     let followUps = [
       "Show me the 5-day precipitation probability",
@@ -450,12 +458,21 @@ export async function sendAssistantMessage(message: string, attachedImage?: stri
       "How to prepare soil for Chickpea sowing?"
     ];
 
-    if (message.toLowerCase().includes("blight") || message.toLowerCase().includes("disease")) {
-      reply = "For Early Blight (Alternaria solani), prompt action is crucial:\n\n1. **Immediate Sanitation**: Remove infected lower leaves with concentric rings.\n2. **Therapy**: Spray Copper Oxychloride (2.5g/L) or biological Trichoderma viride.\n3. **Watering**: Switch strictly from overhead sprinklers to drip lines.\n\nWould you like me to inspect an uploaded leaf image?";
-      followUps = ["Recommend organic fungicide brands", "Check weather risk for fungal spread"];
-    } else if (message.toLowerCase().includes("crop") || message.toLowerCase().includes("soil")) {
+    if (msgLower.includes("blight") || msgLower.includes("disease") || contextLower.includes("blight")) {
+      const isFollowUp = contextLower.includes("blight") && history.length > 2;
+      reply = isFollowUp
+        ? "As a follow-up to the blight treatment: ensure you re-inspect the field every 48 hours. If new lesions appear despite fungicide application, switch to a systemic fungicide like Metalaxyl-M. Also check neighboring plots — blight spreads via wind-borne spores."
+        : "For Early Blight (Alternaria solani), prompt action is crucial:\n\n1. **Immediate Sanitation**: Remove infected lower leaves with concentric rings.\n2. **Therapy**: Spray Copper Oxychloride (2.5g/L) or biological Trichoderma viride.\n3. **Watering**: Switch strictly from overhead sprinklers to drip lines.\n\nWould you like me to inspect an uploaded leaf image?";
+      followUps = ["Recommend organic fungicide brands", "Check weather risk for fungal spread", "How often should I re-apply fungicide?"];
+    } else if (msgLower.includes("crop") || msgLower.includes("soil") || msgLower.includes("sow")) {
       reply = "With your soil pH at 6.8 and balanced NPK reserves, **Chickpea (Gram)** or **Mustard** present the highest suitability index (94% and 88% respectively) for the upcoming rabi cycle.";
       followUps = ["Compare Chickpea vs Wheat returns", "What fertilizer dose is required for Chickpea?"];
+    } else if (msgLower.includes("irrigat") || msgLower.includes("water") || msgLower.includes("moisture")) {
+      reply = "Current soil moisture is at **38%**, which is below the vegetative-stage target of 45%. However, with 65% rain probability in the next 24 hours, I recommend **holding irrigation** until tomorrow morning. Re-evaluate after the rain event.";
+      followUps = ["What if it doesn't rain tomorrow?", "How much water does my crop need per cycle?"];
+    } else if (msgLower.includes("fertilizer") || msgLower.includes("npk") || msgLower.includes("nutrient")) {
+      reply = "For your current crop stage, apply **NPK 19:19:19** at 2.5g/L as a foliar spray. Your soil nitrogen (N:65) is moderate — a top-dress of Urea (46% N) at 25 kg/ha is recommended before the next irrigation cycle.";
+      followUps = ["When is the best time to apply urea?", "Can I mix fertilizer with fungicide spray?"];
     }
 
     return {
@@ -476,7 +493,11 @@ export async function sendAssistantMessage(message: string, attachedImage?: stri
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: message,
-        language: "en",
+        language: language,
+        history: history
+          .filter((m) => m.sender !== "assistant" || !m.suggestedFollowUps) // exclude greeting meta
+          .slice(-20) // last 20 messages = 10 turns
+          .map((m) => ({ role: m.sender === "user" ? "user" : "assistant", content: m.content })),
       }),
       signal: controller.signal,
     });

@@ -4,20 +4,52 @@ import React, { useState } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { sendAssistantMessage } from "@/lib/api/client";
 import { ChatMessage } from "@/types";
-import { mockInitialChatMessages } from "@/lib/mock/data";
+import { mockInitialChatMessages, getInitialChatMessages } from "@/lib/mock/data";
 import { SimulationBadge } from "@/components/common/StatCard";
+import { useLanguage } from "@/lib/context/LanguageContext";
 import {
   Bot,
   Send,
-  Sparkles,
-  Paperclip,
-  Image as ImageIcon,
   User,
   RefreshCw,
 } from "lucide-react";
 
+const ASSISTANT_UI = {
+  en: {
+    title: "KrishiDrishti AI Assistant",
+    subtitle: "Multilingual agricultural co-pilot trained on regional agronomy, plant pathology, and precision fertigation.",
+    placeholder: "Ask about crop health, fertilizer schedule, or weather risks...",
+    thinking: "Assistant is consulting farm telemetry & agronomic database...",
+    suggested: "Suggested Questions:",
+  },
+  hi: {
+    title: "कृषि दृष्टि एआई सहायक",
+    subtitle: "क्षेत्रीय कृषि विज्ञान, पादप रोग विज्ञान और सटीक सिंचाई पर प्रशिक्षित बहुभाषी कृषि सह-पायलट।",
+    placeholder: "फसल स्वास्थ्य, उर्वरक कार्यक्रम या मौसम जोखिम के बारे में पूछें...",
+    thinking: "सहायक कृषि डेटाबेस से जानकारी प्राप्त कर रहा है...",
+    suggested: "सुझाए गए प्रश्न:",
+  },
+  pa: {
+    title: "ਕ੍ਰਿਸ਼ੀ ਦ੍ਰਿਸ਼ਟੀ ਏਆਈ ਸਹਾਇਕ",
+    subtitle: "ਖੇਤਰੀ ਖੇਤੀਬਾੜੀ ਵਿਗਿਆਨ ਅਤੇ ਸਿੰਚਾਈ ਤੇ ਸਿਖਲਾਈ ਪ੍ਰਾਪਤ ਬਹੁ-ਭਾਸ਼ਾਈ ਖੇਤੀ ਸਹਾਇਕ।",
+    placeholder: "ਫ਼ਸਲ ਦੀ ਸਿਹਤ, ਖਾਦ ਜਾਂ ਮੌਸਮ ਬਾਰੇ ਪੁੱਛੋ...",
+    thinking: "ਸਹਾਇਕ ਖੇਤੀ ਡੇਟਾਬੇਸ ਤੋਂ ਜਾਣਕਾਰੀ ਲੈ ਰਿਹਾ ਹੈ...",
+    suggested: "ਸੁਝਾਏ ਗਏ ਸਵਾਲ:",
+  },
+  te: {
+    title: "కృషి దృష్టి ఏఐ సహాయకుడు",
+    subtitle: "ప్రాంతీయ వ్యవసాయ శాస్త్రం మరియు నీటిపారుదలపై శిక్షణ పొందిన బహుభాషా వ్యవసాయ సహాయకుడు.",
+    placeholder: "పంట ఆరోగ్యం, ఎరువులు లేదా వాతావరణ నష్టాల గురించి అడగండి...",
+    thinking: "సహాయకుడు వ్యవసాయ డేటాబేస్ నుండి సమాచారం తీసుకుంటున్నాడు...",
+    suggested: "సూచించిన ప్రశ్నలు:",
+  },
+};
+
 export default function AssistantPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>(mockInitialChatMessages);
+  const { language } = useLanguage();
+  const ui = ASSISTANT_UI[language] ?? ASSISTANT_UI.en;
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => getInitialChatMessages(language));
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +69,7 @@ export default function AssistantPage() {
     setLoading(true);
 
     try {
-      const reply = await sendAssistantMessage(messageText);
+      const reply = await sendAssistantMessage(messageText, undefined, language, [...messages, userMsg]);
       setMessages((prev) => [...prev, reply]);
     } catch (err) {
       console.error(err);
@@ -55,12 +87,12 @@ export default function AssistantPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
                 <Bot className="h-6 w-6 text-emerald-700" />
-                KrishiDrishti AI Assistant
+                {ui.title}
               </h1>
               <SimulationBadge />
             </div>
             <p className="mt-0.5 text-xs text-stone-500">
-              Multilingual agricultural co-pilot trained on regional agronomy, plant pathology, and precision fertigation.
+              {ui.subtitle}
             </p>
           </div>
         </div>
@@ -120,7 +152,7 @@ export default function AssistantPage() {
                 {msg.suggestedFollowUps && (
                   <div className="pt-2 border-t border-stone-200/60 mt-2 space-y-1.5">
                     <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider block">
-                      Suggested Questions:
+                      {ui.suggested}
                     </span>
                     <div className="flex flex-wrap gap-1.5">
                       {msg.suggestedFollowUps.map((suggestion, sIdx) => (
@@ -146,7 +178,7 @@ export default function AssistantPage() {
               </div>
               <div className="rounded-2xl bg-stone-50 border border-stone-200/80 p-3.5 text-xs text-stone-500 flex items-center gap-2">
                 <RefreshCw className="h-4 w-4 animate-spin" />
-                <span>Assistant is consulting farm telemetry & agronomic database...</span>
+                <span>{ui.thinking}</span>
               </div>
             </div>
           )}
@@ -163,7 +195,7 @@ export default function AssistantPage() {
           >
             <input
               type="text"
-              placeholder="Ask about crop health, fertilizer schedule, or weather risks..."
+              placeholder={ui.placeholder}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               className="flex-1 rounded-xl bg-transparent px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:outline-hidden"

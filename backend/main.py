@@ -1122,7 +1122,7 @@ def sustainability_score(d: SustainabilityInput):
 # MODULE E - Farmer Assistant  (LLM, Hindi/Gujarati, grounded)
 # =====================================================================
 
-LANG_NAME = {"hi": "Hindi", "gu": "Gujarati", "en": "English"}
+LANG_NAME = {"hi": "Hindi", "gu": "Gujarati", "en": "English", "pa": "Punjabi", "te": "Telugu"}
 
 # Comprehensive agricultural knowledge base for fallback responses
 _AGRI_KB = {
@@ -1168,15 +1168,21 @@ def _smart_fallback_response(message: str) -> str:
     return _DEFAULT_RESPONSE
 
 
+class ChatHistoryItem(BaseModel):
+    role: str   # "user" or "assistant"
+    content: str
+
+
 class AssistantInput(BaseModel):
-    message: Optional[str] = None          # primary free-text message
+    message: Optional[str] = None
     disease: Optional[str] = None
     recommended_crop: Optional[str] = None
     irrigation_action: Optional[str] = None
-    language: str = "en"                   # hi | gu | en
+    language: str = "en"
+    history: Optional[List[ChatHistoryItem]] = []
 
 
-def _llm_reply(message: str, lang: str) -> Optional[str]:
+def _llm_reply(message: str, lang: str, history: list = []) -> Optional[str]:
     api_key = os.getenv("LLM_API_KEY")
     if not api_key or api_key.startswith("<") or api_key == "your_groq_api_key_here":
         return None
@@ -1185,18 +1191,22 @@ def _llm_reply(message: str, lang: str) -> Optional[str]:
     lang_name = LANG_NAME.get(lang, "English")
     system_prompt = (
         f"You are KrishiDrishti AI, an expert agricultural assistant for Indian farmers. "
-        f"Reply in {lang_name}. Give practical, concise farming advice in 3-6 sentences. "
-        f"Cover crop diseases, irrigation, soil health, fertilizers, and weather risks. "
-        f"Use bullet points and bold text for clarity. Be specific and actionable."
+        f"Always reply in {lang_name} only. Give practical, concise farming advice. "
+        f"You have memory of the full conversation — use prior context to give relevant, "
+        f"coherent follow-up answers. Cover crop diseases, irrigation, soil health, "
+        f"fertilizers, and weather risks. Use bullet points and bold text for clarity. "
+        f"Be specific and actionable. Never repeat the same advice already given in this session."
     )
+    # Build messages: system + history (last 10 turns) + current user message
+    messages = [{"role": "system", "content": system_prompt}]
+    for h in (history or [])[-10:]:
+        messages.append({"role": h.role, "content": h.content})
+    messages.append({"role": "user", "content": message})
     try:
         r = requests.post(
             f"{base}/chat/completions",
             headers={"Authorization": f"Bearer {api_key}"},
-            json={"model": model, "temperature": 0.4, "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": message},
-            ]},
+            json={"model": model, "temperature": 0.4, "messages": messages},
             timeout=25,
         )
         r.raise_for_status()
@@ -1208,7 +1218,6 @@ def _llm_reply(message: str, lang: str) -> Optional[str]:
 @app.post("/assistant", tags=["E - Farmer Assistant"])
 def assistant(d: AssistantInput):
     lang = d.language if d.language in LANG_NAME else "en"
-    # Resolve the actual message text from any field
     message = d.message or d.irrigation_action or ""
     if d.disease:
         message = f"My crop has {d.disease}. What should I do?"
@@ -1218,8 +1227,8 @@ def assistant(d: AssistantInput):
     if not message.strip():
         message = "What can you help me with?"
 
-    # Try LLM first, fall back to smart KB response
-    llm = _llm_reply(message, lang)
+    # Try LLM with full conversation history first, fall back to smart KB
+    llm = _llm_reply(message, lang, d.history or [])
     reply = llm if llm else _smart_fallback_response(message)
 
     return {
