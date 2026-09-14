@@ -18,6 +18,8 @@ import {
   ArrowUp,
   LayoutDashboard,
 } from "lucide-react";
+import { UserManualDownload } from "@/components/common/UserManualDownload";
+import { EvaluatorManualDownload } from "@/components/common/EvaluatorManualDownload";
 
 export default function LandingPage() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -107,6 +109,8 @@ export default function LandingPage() {
           </Link>
 
           <div className="flex items-center gap-2 shrink-0">
+            <EvaluatorManualDownload variant="navbar" />
+            <UserManualDownload variant="navbar" />
             {isLoaded && isSignedIn ? (
               <Link
                 href="/dashboard"
@@ -153,13 +157,16 @@ export default function LandingPage() {
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             {isLoaded && isSignedIn ? (
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 rounded-xl bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-900 transition-all active:scale-[0.99]"
-              >
-                <LayoutDashboard className="h-4 w-4" />
-                <span>Go to Dashboard</span>
-              </Link>
+              <>
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-2 rounded-xl bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-900 transition-all active:scale-[0.99]"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  <span>Go to Dashboard</span>
+                </Link>
+                <UserManualDownload variant="hero" />
+              </>
             ) : (
               <>
                 <Link
@@ -176,6 +183,8 @@ export default function LandingPage() {
                   <span>Sign In</span>
                   <ArrowRight className="h-4 w-4 text-stone-500" />
                 </Link>
+                <UserManualDownload variant="hero" />
+                <EvaluatorManualDownload variant="hero" />
               </>
             )}
           </div>
@@ -304,6 +313,7 @@ export default function LandingPage() {
                   <LayoutDashboard className="h-4 w-4" />
                   Go to Dashboard
                 </Link>
+                <EvaluatorManualDownload variant="hero" />
               ) : (
                 <>
                   <Link
