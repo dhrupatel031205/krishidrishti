@@ -692,7 +692,7 @@ _DISEASE_KB = {
 }
 
 
-# 38 PlantVillage classes (sorted, matching EfficientNet-B3 training order)
+# 38 PlantVillage classes (sorted, matching EfficientNet-B0 training order)
 _CLASSES = [
     "Apple___Apple_scab", "Apple___Black_rot", "Apple___Cedar_apple_rust", "Apple___healthy",
     "Blueberry___healthy", "Cherry_(including_sour)___Powdery_mildew", "Cherry_(including_sour)___healthy",
@@ -785,6 +785,7 @@ def _match_disease(filename: str, image_bytes: bytes = b"") -> dict:
             "monitoringAdvice": kb.get("monitoringAdvice", []),
             "classProbabilities": top5,
             "_from_model": True,
+            "_raw_class": best_class,
         }
 
     # --- Fallback: hash-based KB lookup ---
@@ -1021,12 +1022,21 @@ async def predict_disease(file: UploadFile = File(...), authorization: str = Hea
 
     d = _match_disease(file.filename or "", contents)
 
-    # ── Step 3: Skip post-model safety — show best prediction always ──
-    # _from_model means crop/condition already parsed by real inference
+    # ── Step 3: Post-model safety check (low confidence / cross-crop) ──
     if d.get("_from_model"):
         crop = d["crop"]
         condition = d["disease"]
         healthy = d["healthy"]
+        safety = _check_post_model_safety(
+            d["_raw_class"],
+            d["confidence"],
+            d["classProbabilities"],
+        )
+        if safety:
+            raise HTTPException(
+                status_code=422,
+                detail={"type": "unsupported_disease", **safety},
+            )
     else:
         crop, condition, healthy = _parse_class(
             next((c for c in _CLASSES if d["disease"].lower().replace(" ", "_") in c.lower()), _CLASSES[-1])
@@ -1150,8 +1160,8 @@ def _groq_recommendations(crop: str, disease: str, healthy: bool) -> dict:
 
 @app.get("/api/model/metrics", tags=["Core - Crop Disease Detection"])
 def model_metrics():
-    """Returns EfficientNet-B3 training metrics from PlantVillage dataset."""
-    # Training history from the actual notebook run (38 classes, EfficientNet-B3)
+    """Returns EfficientNet-B0 training metrics from PlantVillage dataset."""
+    # Training history from the actual notebook run (38 classes, EfficientNet-B0)
     training_history = [
         {"epoch": 1,  "train_loss": 1.8432, "val_loss": 1.2341, "train_f1": 0.4821, "val_f1": 0.6234},
         {"epoch": 2,  "train_loss": 0.9821, "val_loss": 0.7432, "train_f1": 0.7123, "val_f1": 0.7891},
@@ -1206,7 +1216,7 @@ def model_metrics():
         {"class": "Tomato Healthy",          "precision": 0.98, "recall": 0.97, "f1": 0.975},
     ]
     return {
-        "model": "EfficientNet-B3",
+        "model": "EfficientNet-B0",
         "dataset": "PlantVillage",
         "num_classes": 38,
         "total_images": 54305,

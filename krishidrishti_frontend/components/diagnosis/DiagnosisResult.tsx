@@ -492,7 +492,7 @@ export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
           </div>
 
           <div className="mt-4 pt-3 border-t border-stone-100 text-[11px] text-stone-500 flex items-center justify-between">
-            <span>Backbone: EfficientNet-B3 · Layer: block6</span>
+            <span>Backbone: EfficientNet-B0 · Layer: block6</span>
             <span>Input: 224×224 px</span>
           </div>
         </div>
