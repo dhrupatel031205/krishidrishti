@@ -84,7 +84,6 @@ export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
                 severity: result.severity,
                 explanation: result.explanation,
                 analyzedAt: result.analyzedAt,
-                model: result.model,
                 classProbabilities: result.classProbabilities,
                 recommendations: result.recommendations,
               })}
