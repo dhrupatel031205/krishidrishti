@@ -120,7 +120,7 @@ except Exception:
 _disease_model_bundle = None  # lazy-loaded
 
 _DISEASE_MODEL_PATH = (
-    Path(__file__).resolve().parent / "models" / "best_agri_model.pth"
+    Path(__file__).resolve().parent / "models" / "krishidrishti_efficientnet_b0_final.pth"
 )
 
 _INFER_TRANSFORM = None
@@ -747,7 +747,78 @@ def _match_disease(filename: str, image_bytes: bytes = b"") -> dict:
     return _DISEASE_KB[disease_keys[seed % len(disease_keys)]]
 
 
-# ── Leaf validator: pretrained MobileNetV3 on ImageNet ────────────────
+# Crop → supported PlantVillage classes map
+_CROP_SUPPORTED_CLASSES: dict[str, list[str]] = {
+    "apple":      ["Apple___Apple_scab", "Apple___Black_rot", "Apple___Cedar_apple_rust", "Apple___healthy"],
+    "blueberry":  ["Blueberry___healthy"],
+    "cherry":     ["Cherry_(including_sour)___Powdery_mildew", "Cherry_(including_sour)___healthy"],
+    "corn":       ["Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot", "Corn_(maize)___Common_rust_", "Corn_(maize)___Northern_Leaf_Blight", "Corn_(maize)___healthy"],
+    "grape":      ["Grape___Black_rot", "Grape___Esca_(Black_Measles)", "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)", "Grape___healthy"],
+    "orange":     ["Orange___Haunglongbing_(Citrus_greening)"],
+    "peach":      ["Peach___Bacterial_spot", "Peach___healthy"],
+    "pepper":     ["Pepper,_bell___Bacterial_spot", "Pepper,_bell___healthy"],
+    "potato":     ["Potato___Early_blight", "Potato___Late_blight", "Potato___healthy"],
+    "raspberry":  ["Raspberry___healthy"],
+    "soybean":    ["Soybean___healthy"],
+    "squash":     ["Squash___Powdery_mildew"],
+    "strawberry": ["Strawberry___Leaf_scorch", "Strawberry___healthy"],
+    "tomato":     ["Tomato___Bacterial_spot", "Tomato___Early_blight", "Tomato___Late_blight", "Tomato___Leaf_Mold", "Tomato___Septoria_leaf_spot", "Tomato___Spider_mites Two-spotted_spider_mite", "Tomato___Target_Spot", "Tomato___Tomato_Yellow_Leaf_Curl_Virus", "Tomato___Tomato_mosaic_virus", "Tomato___healthy"],
+}
+
+def _extract_crop_from_class(class_name: str) -> str:
+    """Extract the crop name (lowercase) from a PlantVillage class string."""
+    return class_name.split("___")[0].lower().replace("_(including_sour)", "").replace("_(maize)", "").replace(",_bell", "").strip()
+
+
+def _check_post_model_safety(predicted_class: str, confidence: float, top5: list) -> dict | None:
+    """
+    After the disease model runs, check for two failure modes:
+    1. Low confidence — model is uncertain (< 55%)
+    2. Crop mismatch — top-1 predicted crop doesn't match top-2/3 crops in top5
+
+    Returns an unsupported-disease dict if either condition is met, else None.
+    """
+    predicted_crop = _extract_crop_from_class(predicted_class)
+
+    # Check if top5 contains classes from a different crop with significant probability
+    # This catches: grape leaf → model says Corn Healthy
+    top5_crops = [_extract_crop_from_class(t["className"]) for t in top5]
+    other_crops = [c for c in top5_crops if c != predicted_crop]
+    dominant_other = len(other_crops) >= 3  # 3+ of top5 are a different crop
+
+    low_confidence = confidence < 0.55
+
+    if not (low_confidence or dominant_other):
+        return None  # model is confident and consistent — pass through
+
+    # Build a human-readable reason
+    if dominant_other and not low_confidence:
+        # Confident but wrong crop — most dangerous case (e.g. grape → corn)
+        actual_crops = list(dict.fromkeys(top5_crops))  # unique, order-preserved
+        reason = (
+            f"The model predicted '{predicted_class.replace('___', ' — ')}' with {round(confidence*100)}% confidence, "
+            f"but the top predictions span multiple crops ({', '.join(actual_crops[:3])}), "
+            f"suggesting the uploaded leaf may belong to a crop or disease not fully supported by the current model."
+        )
+    else:
+        reason = (
+            f"Model confidence is low ({round(confidence*100)}%). "
+            f"The top prediction was '{predicted_class.replace('___', ' — ')}' but the model could not distinguish it clearly from other classes. "
+            f"This may be an unsupported disease variant or an out-of-distribution image."
+        )
+
+    # Detected crop from top5 majority vote
+    from collections import Counter
+    detected_crop = Counter(top5_crops).most_common(1)[0][0].capitalize()
+
+    return {
+        "unsupported": True,
+        "detectedCrop": detected_crop,
+        "unsupportedReason": reason,
+        "classProbabilities": top5,
+    }
+
+
 _VALIDATOR_MODEL = None
 _VALIDATOR_TRANSFORM = None
 
@@ -899,6 +970,35 @@ async def predict_disease(file: UploadFile = File(...), authorization: str = Hea
     data_url = f"data:{file.content_type};base64,{image_b64}"
 
     d = _match_disease(file.filename or "", contents)
+
+    # ── Step 3: Post-model safety check (crop mismatch / low confidence) ──
+    if d.get("_from_model") and d.get("classProbabilities"):
+        safety = _check_post_model_safety(
+            d["classProbabilities"][0]["className"],
+            d["confidence"],
+            d["classProbabilities"],
+        )
+        if safety:
+            return {
+                "id": f"diag-{int(datetime.now(timezone.utc).timestamp())}",
+                "crop": safety["detectedCrop"],
+                "disease": "Unsupported / Uncertain Disease",
+                "condition": "Unsupported / Uncertain Disease",
+                "status": "Uncertain",
+                "confidence": d["confidence"],
+                "confidence_pct": f"{round(d['confidence'] * 100, 2)}%",
+                "healthy": False,
+                "severity": "low",
+                "explanation": safety["unsupportedReason"],
+                "heatmapUrl": None,
+                "analyzedAt": datetime.now(timezone.utc).isoformat(),
+                "imageUrl": data_url,
+                "classProbabilities": safety["classProbabilities"],
+                "recommendations": None,
+                "unsupported": True,
+                "unsupportedReason": safety["unsupportedReason"],
+                "detectedCrop": safety["detectedCrop"],
+            }
 
     # _from_model means crop/condition already parsed by real inference
     if d.get("_from_model"):

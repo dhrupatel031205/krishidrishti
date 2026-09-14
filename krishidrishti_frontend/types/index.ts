@@ -32,6 +32,9 @@ export interface PredictionResponse {
   heatmapUrl?: string | null;
   analyzedAt?: string;
   imageUrl?: string;
+  unsupported?: boolean;
+  unsupportedReason?: string;
+  detectedCrop?: string;
 }
 
 export interface DiagnosisHistoryItem {

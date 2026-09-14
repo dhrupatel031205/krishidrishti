@@ -43,6 +43,87 @@ export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
     probability: Math.round(cp.probability * 100),
   }));
 
+  // ── Unsupported / uncertain disease state ──
+  if (result.unsupported) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 sm:p-8 shadow-xs">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-6 border-b border-amber-200/60">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-amber-700">
+                  Unsupported or Uncertain Disease
+                </span>
+              </div>
+              <h2 className="text-2xl font-bold text-stone-900">
+                {result.detectedCrop || result.crop} — Disease Not Identified
+              </h2>
+              <p className="text-sm text-stone-600 leading-relaxed max-w-2xl">
+                {result.unsupportedReason}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={onReset}
+                className="rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 shadow-xs"
+              >
+                Try Another Image
+              </button>
+            </div>
+          </div>
+
+          {/* What to do */}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl bg-white border border-amber-200/80 p-4 space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wider text-amber-800">What this means</div>
+              <p className="text-xs text-stone-700 leading-relaxed">
+                The AI model was trained on a fixed set of crop diseases from the PlantVillage dataset.
+                Your image may show a disease variant, growth stage, or crop type not included in the
+                current {result.classProbabilities?.length ?? 38}-class model.
+              </p>
+            </div>
+            <div className="rounded-xl bg-white border border-amber-200/80 p-4 space-y-2">
+              <div className="text-xs font-semibold uppercase tracking-wider text-amber-800">Recommended next steps</div>
+              <ul className="text-xs text-stone-700 space-y-1.5">
+                <li className="flex items-start gap-2"><ShieldAlert className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" /> Consult your local Krishi Vigyan Kendra (KVK) or agronomist</li>
+                <li className="flex items-start gap-2"><ShieldAlert className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" /> Take multiple close-up photos of the affected leaf area</li>
+                <li className="flex items-start gap-2"><ShieldAlert className="h-3.5 w-3.5 text-amber-600 shrink-0 mt-0.5" /> Try uploading a clearer, well-lit single-leaf image</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Still show probability distribution so user sees what model considered */}
+        {result.classProbabilities && result.classProbabilities.length > 0 && (
+          <div className="rounded-2xl border border-stone-200/80 bg-white p-6 shadow-xs">
+            <div className="mb-4">
+              <h3 className="font-semibold text-stone-900 text-sm">Model Top Predictions (for reference)</h3>
+              <p className="text-xs text-stone-500">These are the closest matches the model found — none met the confidence threshold</p>
+            </div>
+            <div className="h-48 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                  <XAxis type="number" domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} />
+                  <YAxis dataKey="name" type="category" width={130} tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    formatter={(value: number) => [`${value}%`, "Probability"]}
+                    contentStyle={{ backgroundColor: "#ffffff", borderRadius: "8px", fontSize: "12px" }}
+                  />
+                  <Bar dataKey="probability" radius={[0, 4, 4, 0]}>
+                    {chartData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={index === 0 ? "#d97706" : "#cbd5e1"} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Top Banner Result Card */}
