@@ -272,6 +272,34 @@ _DISEASE_KB = {
             {"className": "Corn Healthy", "probability": 0.035},
         ],
     },
+    "corn_northern_leaf_blight": {
+        "crop": "Corn", "disease": "Northern Leaf Blight", "healthy": False,
+        "confidence": 0.970, "severity": "moderate",
+        "explanation": "Long, elliptical, grayish-green to tan lesions (2.5–15 cm) running parallel to leaf veins, caused by Exserohilum turcicum fungus. Lesions may show dark sporulation under humid conditions.",
+        "immediateActions": [
+            "Scout field immediately and map lesion spread across canopy layers.",
+            "Avoid overhead irrigation to reduce leaf wetness duration.",
+            "Remove and destroy heavily infected lower leaves to reduce inoculum."
+        ],
+        "treatmentPlan": [
+            "Apply triazole or strobilurin fungicide (e.g., Propiconazole or Azoxystrobin) at VT/R1 growth stage.",
+            "Repeat application after 14 days if disease pressure remains high."
+        ],
+        "prevention": [
+            "Plant NLB-resistant hybrid varieties with Ht1/Ht2 resistance genes.",
+            "Practice crop rotation with non-host crops like soybean or wheat.",
+            "Manage crop residue by tillage to reduce overwintering inoculum."
+        ],
+        "monitoringAdvice": [
+            "Monitor weekly from V6 stage onward, especially during cool (18–27°C) and humid weather.",
+            "Track lesion progression from lower to upper canopy as an indicator of epidemic risk."
+        ],
+        "classProbabilities": [
+            {"className": "Corn Northern Leaf Blight", "probability": 0.970},
+            {"className": "Corn Common Rust", "probability": 0.020},
+            {"className": "Corn Healthy", "probability": 0.010},
+        ],
+    },
     "apple_scab": {
         "crop": "Apple", "disease": "Apple Scab", "healthy": False,
         "confidence": 0.931, "severity": "low",
@@ -340,15 +368,48 @@ def _match_disease(filename: str, image_bytes: bytes = b"") -> dict:
         best_class, best_conf, top5 = result
         crop, condition, healthy = _parse_class(best_class)
         # Find closest KB entry for recommendations
-        kb_key = next(
-            (k for k in _DISEASE_KB if k in best_class.lower().replace(" ", "_")),
-            "healthy" if healthy else None,
-        )
-        if kb_key is None:
-            kb_key = next(
-                (k for k in _DISEASE_KB if k != "healthy"),
-                "healthy",
-            )
+            # Map PlantVillage class name to KB key
+        _CLASS_TO_KB = {
+            "apple___apple_scab": "apple_scab",
+            "apple___black_rot": "apple_scab",
+            "apple___cedar_apple_rust": "apple_scab",
+            "apple___healthy": "healthy",
+            "blueberry___healthy": "healthy",
+            "cherry_(including_sour)___powdery_mildew": "healthy",
+            "cherry_(including_sour)___healthy": "healthy",
+            "corn_(maize)___cercospora_leaf_spot gray_leaf_spot": "corn_common_rust",
+            "corn_(maize)___common_rust_": "corn_common_rust",
+            "corn_(maize)___northern_leaf_blight": "corn_northern_leaf_blight",
+            "corn_(maize)___healthy": "healthy",
+            "grape___black_rot": "apple_scab",
+            "grape___esca_(black_measles)": "apple_scab",
+            "grape___leaf_blight_(isariopsis_leaf_spot)": "apple_scab",
+            "grape___healthy": "healthy",
+            "orange___haunglongbing_(citrus_greening)": "apple_scab",
+            "peach___bacterial_spot": "apple_scab",
+            "peach___healthy": "healthy",
+            "pepper,_bell___bacterial_spot": "apple_scab",
+            "pepper,_bell___healthy": "healthy",
+            "potato___early_blight": "potato_late_blight",
+            "potato___late_blight": "potato_late_blight",
+            "potato___healthy": "healthy",
+            "raspberry___healthy": "healthy",
+            "soybean___healthy": "healthy",
+            "squash___powdery_mildew": "apple_scab",
+            "strawberry___leaf_scorch": "apple_scab",
+            "strawberry___healthy": "healthy",
+            "tomato___bacterial_spot": "tomato_early_blight",
+            "tomato___early_blight": "tomato_early_blight",
+            "tomato___late_blight": "tomato_late_blight",
+            "tomato___leaf_mold": "tomato_early_blight",
+            "tomato___septoria_leaf_spot": "tomato_early_blight",
+            "tomato___spider_mites two-spotted_spider_mite": "tomato_early_blight",
+            "tomato___target_spot": "tomato_early_blight",
+            "tomato___tomato_yellow_leaf_curl_virus": "tomato_late_blight",
+            "tomato___tomato_mosaic_virus": "tomato_late_blight",
+            "tomato___healthy": "healthy",
+        }
+        kb_key = _CLASS_TO_KB.get(best_class.lower(), "healthy" if healthy else "tomato_early_blight")
         kb = _DISEASE_KB[kb_key]
         return {
             "crop": crop,
@@ -425,8 +486,11 @@ async def predict_disease(file: UploadFile = File(...)):
 def _groq_recommendations(crop: str, disease: str, healthy: bool) -> dict:
     """Call Groq to generate structured treatment recommendations. Falls back to KB data."""
     api_key = os.getenv("LLM_API_KEY")
-    kb_key = disease.lower().replace(" ", "_")
-    kb = next((v for k, v in _DISEASE_KB.items() if k in kb_key or kb_key in k), _DISEASE_KB["healthy"])
+    kb_key = disease.lower().replace(" ", "_").replace("-", "_")
+    kb = next(
+        (v for k, v in _DISEASE_KB.items() if k != "healthy" and (k in kb_key or kb_key in k)),
+        _DISEASE_KB["healthy" if healthy else "tomato_early_blight"],
+    )
     fallback = {
         "immediateActions": kb["immediateActions"],
         "treatmentPlan": kb["treatmentPlan"],
