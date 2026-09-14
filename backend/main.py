@@ -747,24 +747,126 @@ def _match_disease(filename: str, image_bytes: bytes = b"") -> dict:
     return _DISEASE_KB[disease_keys[seed % len(disease_keys)]]
 
 
+# ── Leaf validator: pretrained MobileNetV3 on ImageNet ────────────────
+_VALIDATOR_MODEL = None
+_VALIDATOR_TRANSFORM = None
+
+# ImageNet class index ranges and known non-plant classes to reject
+# Person: 0 (tench) is fish but indices 0-397 cover many animals
+# Key non-plant superclasses in ImageNet-1k:
+_NON_PLANT_SYNSETS = {
+    # People & body parts
+    "person", "man", "woman", "boy", "girl", "face", "head",
+    # Animals
+    "dog", "cat", "bird", "fish", "snake", "horse", "cow", "sheep",
+    "elephant", "bear", "zebra", "giraffe", "lion", "tiger", "monkey",
+    "rabbit", "hamster", "squirrel", "fox", "wolf", "deer", "frog",
+    # Vehicles & objects
+    "car", "truck", "bus", "motorcycle", "bicycle", "airplane", "boat",
+    "train", "phone", "laptop", "keyboard", "mouse", "remote", "book",
+    "bottle", "cup", "bowl", "chair", "table", "sofa", "bed", "toilet",
+    "tv", "clock", "vase", "scissors", "toothbrush", "hair",
+    # Food (non-plant raw form)
+    "pizza", "burger", "sandwich", "hot dog", "cake", "donut",
+}
+
+# ImageNet labels that confirm plant/leaf content
+_PLANT_KEYWORDS = {
+    "leaf", "plant", "flower", "tree", "grass", "fern", "moss", "herb",
+    "shrub", "vine", "crop", "corn", "tomato", "potato", "apple",
+    "strawberry", "orange", "lemon", "banana", "mango", "wheat", "rice",
+    "cabbage", "broccoli", "cauliflower", "spinach", "lettuce", "cucumber",
+    "pumpkin", "squash", "pepper", "eggplant", "artichoke", "mushroom",
+    "daisy", "sunflower", "rose", "tulip", "orchid", "acorn", "rapeseed",
+    "bud", "petal", "stalk", "stem", "frond", "foliage", "canopy",
+}
+
+
+def _load_validator_model():
+    """Lazy-load MobileNetV3-Small with pretrained ImageNet weights."""
+    global _VALIDATOR_MODEL, _VALIDATOR_TRANSFORM
+    if _VALIDATOR_MODEL is not None:
+        return _VALIDATOR_MODEL, _VALIDATOR_TRANSFORM
+    if not TORCH_AVAILABLE:
+        return None, None
+    try:
+        from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
+        weights = MobileNet_V3_Small_Weights.IMAGENET1K_V1
+        model = mobilenet_v3_small(weights=weights)
+        model.eval()
+        _VALIDATOR_TRANSFORM = weights.transforms()
+        _VALIDATOR_MODEL = model
+        print("[INFO] Leaf validator (MobileNetV3) loaded")
+        return _VALIDATOR_MODEL, _VALIDATOR_TRANSFORM
+    except Exception as e:
+        print(f"[WARN] Could not load validator model: {e}")
+        return None, None
+
+
+def _imagenet_is_plant(image: "PILImage.Image") -> tuple[bool, str]:
+    """
+    Run MobileNetV3 on the image and check if top-5 predictions
+    contain plant/leaf classes. Returns (is_plant, top_label).
+    """
+    model, transform = _load_validator_model()
+    if model is None:
+        return True, "unknown"  # graceful fallback: don't block if model unavailable
+
+    try:
+        from torchvision.models import MobileNet_V3_Small_Weights
+        weights = MobileNet_V3_Small_Weights.IMAGENET1K_V1
+        categories = weights.meta["categories"]
+
+        tensor = transform(image).unsqueeze(0)
+        with torch.no_grad():
+            logits = model(tensor)
+            probs = torch.softmax(logits, dim=1)[0]
+
+        top5_vals, top5_idx = torch.topk(probs, 5)
+        top_labels = [categories[i.item()].lower() for i in top5_idx]
+        top_label = top_labels[0]
+        top_conf = top5_vals[0].item()
+
+        # Check if ANY top-5 label contains a plant keyword
+        plant_score = sum(
+            v.item() for v, lbl in zip(top5_vals, top_labels)
+            if any(kw in lbl for kw in _PLANT_KEYWORDS)
+        )
+        # Check if top-1 label is a known non-plant
+        is_non_plant_top1 = any(kw in top_label for kw in _NON_PLANT_SYNSETS)
+
+        # Reject if: top-1 is clearly non-plant with high confidence
+        # OR plant score across top-5 is negligible
+        if is_non_plant_top1 and top_conf > 0.15:
+            return False, top_label
+        if plant_score < 0.05 and top_conf > 0.20:
+            return False, top_label
+
+        return True, top_label
+    except Exception as e:
+        print(f"[WARN] Validator inference error: {e}")
+        return True, "unknown"  # fail open
+
+
 def _validate_plant_image(image_bytes: bytes) -> tuple[bool, str]:
     """
     2-step plant/leaf image validator — runs BEFORE the disease model.
 
-    Step 1 — Image quality checks:
+    Step 1 — Image quality checks (fast, pixel-level):
       1. Minimum resolution
-      2. Extreme aspect ratio
-      3. Brightness (too dark / overexposed)
-      4. Blur (Laplacian variance)
-      5. Variance/entropy (blank, solid color, logo)
+      2. Brightness (too dark / overexposed)
+      3. Blur (edge variance)
 
-    Step 2 — Plant/leaf presence check:
-      6. Vegetation pixel ratio (green/brown/yellow leaf pixels)
+    Step 2 — Semantic content check (MobileNetV3 ImageNet):
+      4. Reject if image is a person, animal, vehicle, or object
+      5. Require plant/leaf signal in top-5 predictions
 
     Returns (is_valid, rejection_reason)
     """
     try:
+        from PIL import ImageFilter
         import numpy as np
+
         img = PILImage.open(io.BytesIO(image_bytes)).convert("RGB")
         w, h = img.size
 
@@ -772,52 +874,27 @@ def _validate_plant_image(image_bytes: bytes) -> tuple[bool, str]:
         if w < 64 or h < 64:
             return False, "Image resolution is too low. Please upload a clear, high-resolution crop leaf photo."
 
-        # 2. Extreme aspect ratio
-        ratio = w / h
-        if ratio > 4.0 or ratio < 0.25:
-            return False, "Image dimensions look unusual. Please upload a close-up photo of a single crop leaf."
-
+        # 2. Brightness check
         small = img.resize((128, 128), PILImage.LANCZOS)
-        arr = np.array(small, dtype=np.float32)
         gray_arr = np.array(small.convert("L"), dtype=np.float32)
-
-        # 3. Brightness check — reject completely dark or overexposed images
         mean_brightness = float(gray_arr.mean())
         if mean_brightness < 20:
             return False, "Image is too dark. Please take the photo in good lighting conditions."
-        if mean_brightness > 245:
+        if mean_brightness > 250:
             return False, "Image is overexposed. Please avoid direct flash or bright sunlight on the leaf."
 
-        # 4. Blur detection — Laplacian variance (low = blurry)
-        # Approximate Laplacian with a simple kernel
-        from PIL import ImageFilter
+        # 3. Blur check
         lap = np.array(small.convert("L").filter(ImageFilter.FIND_EDGES), dtype=np.float32)
-        blur_score = float(np.var(lap))
-        if blur_score < 15:
+        if float(np.var(lap)) < 10:
             return False, "Image is too blurry. Please hold the camera steady and ensure the leaf is in focus."
 
-        # 5. Variance check — reject blank / solid-color / logo images
-        variance = float(np.var(gray_arr))
-        if variance < 80:
-            return False, "Image appears to be blank, a solid color, or a logo. Please upload a real crop leaf photo."
-
-        # 6. Vegetation pixel ratio — plant/leaf presence gate
-        r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
-        green_mask      = (g > r + 10) & (g > b + 5) & (g > 40) & (g < 230)
-        brown_mask      = (r > 80) & (g > 50) & (b < 100) & (r > g) & (r > b)
-        dark_green_mask = (g > r) & (g > b) & (g < 100)
-        yellow_mask     = (r > 150) & (g > 150) & (b < 80)  # yellowing/diseased leaves
-
-        veg_ratio = (
-            green_mask.sum() + brown_mask.sum() +
-            dark_green_mask.sum() + yellow_mask.sum()
-        ) / (128 * 128)
-
-        if veg_ratio < 0.08:
+        # 4 & 5. Semantic plant/leaf check via MobileNetV3
+        is_plant, top_label = _imagenet_is_plant(img)
+        if not is_plant:
             return False, (
-                "No plant or leaf detected in this image. "
-                "Please upload a clear photo of a crop leaf or plant foliage. "
-                "Images of people, animals, buildings, or objects are not supported."
+                f"This image appears to contain '{top_label}', not a crop leaf. "
+                "Please upload a clear, close-up photo of a plant leaf or foliage. "
+                "Images of people, animals, or objects are not supported."
             )
 
         return True, ""
