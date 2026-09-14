@@ -6,7 +6,7 @@ joblib==1.4.2
 requests==2.32.3
 python-multipart==0.0.12
 pandas==2.2.3
-torch==2.1.0+cpu
-torchvision==0.16.0+cpu
+torch==2.6.0+cpu
+torchvision==0.21.0+cpu
 Pillow==10.0.0
 --extra-index-url https://download.pytorch.org/whl/cpu
