@@ -4,10 +4,12 @@ import React, { useState } from "react";
 import { Sidebar, TopNav } from "./Sidebar";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { useAuth } from "@/lib/context/AuthContext";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { farmer } = useAuth();
 
   return (
     <div className="min-h-screen bg-[#fbfaf8]">
@@ -26,6 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           isCollapsed={isCollapsed}
           setIsCollapsed={setIsCollapsed}
           onOpenMobile={() => setMobileOpen(true)}
+          farmer={farmer}
         />
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
           {children}

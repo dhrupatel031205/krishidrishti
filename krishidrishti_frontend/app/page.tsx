@@ -14,7 +14,6 @@ import {
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
-  LayoutDashboard,
   ArrowUp,
 } from "lucide-react";
 
@@ -106,18 +105,16 @@ export default function LandingPage() {
 
           <div className="flex items-center gap-3">
             <Link
-              href="/dashboard"
+              href="/login"
               className="flex items-center gap-2 rounded-xl border border-stone-200/90 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-100/80 hover:text-stone-900 transition-colors"
             >
-              <LayoutDashboard className="h-3.5 w-3.5 text-emerald-700" />
-              <span>Dashboard & Sidebar</span>
+              Sign In
             </Link>
-
             <Link
-              href="/diagnosis"
+              href="/signup"
               className="rounded-xl bg-emerald-800 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-900 transition-colors"
             >
-              Analyze Your Crop
+              Get Started
             </Link>
           </div>
         </div>
@@ -141,17 +138,17 @@ export default function LandingPage() {
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Link
-              href="/diagnosis"
+              href="/signup"
               className="flex items-center gap-2 rounded-xl bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-900 transition-all active:scale-[0.99]"
             >
               <ScanLine className="h-4 w-4" />
-              <span>Analyze Your Crop</span>
+              <span>Get Started Free</span>
             </Link>
             <Link
-              href="/dashboard"
+              href="/login"
               className="flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-6 py-3.5 text-sm font-semibold text-stone-800 shadow-xs hover:bg-stone-50 transition-all"
             >
-              <span>Explore KrishiDrishti</span>
+              <span>Sign In</span>
               <ArrowRight className="h-4 w-4 text-stone-500" />
             </Link>
           </div>
@@ -273,16 +270,16 @@ export default function LandingPage() {
 
             <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
               <Link
-                href="/diagnosis"
+                href="/signup"
                 className="rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-md transition-all"
               >
-                Analyze Crop Health Now
+                Create Free Account
               </Link>
               <Link
-                href="/dashboard"
+                href="/login"
                 className="rounded-xl border border-stone-700 bg-stone-800 px-6 py-3.5 text-sm font-semibold text-white hover:bg-stone-700 transition-all"
               >
-                Go to Dashboard
+                Sign In
               </Link>
             </div>
           </div>

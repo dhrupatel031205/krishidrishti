@@ -20,11 +20,15 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeft,
+  LogOut,
+  User,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { featureFlags } from "@/config/features";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "@/lib/context/LanguageContext";
+import { useAuth, Farmer } from "@/lib/context/AuthContext";
 
 interface NavItem {
   title: string;
@@ -47,6 +51,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { t } = useLanguage();
+  const { farmer, logout } = useAuth();
 
   const navItems: NavItem[] = [
     {
@@ -104,6 +109,13 @@ export function Sidebar({
       icon: Sparkles,
       enabled: featureFlags.advisor,
       badge: t("agentic"),
+    },
+    {
+      title: "Model Metrics",
+      href: "/model-metrics",
+      icon: Brain,
+      enabled: true,
+      badge: "EfficientNet",
     },
     {
       title: t("settings"),
@@ -247,7 +259,7 @@ export function Sidebar({
         </nav>
       </div>
 
-      {/* Farm Status Profile Badge */}
+      {/* Farmer Profile & Logout */}
       <div className="mt-4 border-t border-stone-800/80 pt-3">
         <AnimatePresence initial={false}>
           {!isCollapsed ? (
@@ -256,23 +268,53 @@ export function Sidebar({
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="rounded-xl bg-stone-800/70 p-3 border border-stone-700/60 overflow-hidden"
+              className="overflow-hidden"
             >
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-stone-300 whitespace-nowrap">{t("plotInfo")}</div>
-                <span className="flex h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-950 shrink-0" />
+              <div className="rounded-xl bg-stone-800/70 p-3 border border-stone-700/60">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-800 text-white text-xs font-bold">
+                    {farmer ? farmer.name.charAt(0).toUpperCase() : <User className="h-4 w-4" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-stone-200 truncate">
+                      {farmer ? farmer.name : "Guest Farmer"}
+                    </p>
+                    <p className="text-[10px] text-stone-400 truncate">
+                      {farmer ? farmer.farmName : "Not signed in"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={logout}
+                    title="Sign out"
+                    className="p-1.5 rounded-lg text-stone-400 hover:text-rose-400 hover:bg-stone-700 transition-colors shrink-0 cursor-pointer"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
-              <p className="mt-1 text-[11px] text-stone-400 whitespace-nowrap">{t("plotDetails")}</p>
             </motion.div>
           ) : (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex justify-center py-2"
-              title="Plot A • Karnal Hub"
+              className="flex flex-col items-center gap-2 py-1"
             >
-              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-stone-900" />
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-800 text-white text-xs font-bold"
+                title={farmer ? farmer.name : "Guest"}
+              >
+                {farmer ? farmer.name.charAt(0).toUpperCase() : <User className="h-3.5 w-3.5" />}
+              </div>
+              <button
+                type="button"
+                onClick={logout}
+                title="Sign out"
+                className="p-1.5 rounded-lg text-stone-400 hover:text-rose-400 hover:bg-stone-800 transition-colors cursor-pointer"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -312,12 +354,15 @@ export function TopNav({
   isCollapsed,
   setIsCollapsed,
   onOpenMobile,
+  farmer,
 }: {
   isCollapsed?: boolean;
   setIsCollapsed?: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
   onOpenMobile: () => void;
+  farmer?: Farmer | null;
 }) {
   const { t } = useLanguage();
+  const { logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-stone-200/80 bg-stone-50/90 px-4 sm:px-6 backdrop-blur-md">
@@ -363,6 +408,27 @@ export function TopNav({
           <ScanLine className="h-3.5 w-3.5" />
           <span>{t("quickDiagnosis")}</span>
         </Link>
+
+        {farmer && (
+          <div className="flex items-center gap-2">
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-xs font-semibold text-stone-800 leading-none">{farmer.name}</span>
+              <span className="text-[10px] text-stone-500 leading-none mt-0.5">{farmer.farmName}</span>
+            </div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-800 text-white text-xs font-bold shrink-0">
+              {farmer.name.charAt(0).toUpperCase()}
+            </div>
+            <button
+              type="button"
+              onClick={logout}
+              title="Sign out"
+              className="p-1.5 rounded-lg text-stone-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         <Link
           href="/"
           title="Go to Homepage"

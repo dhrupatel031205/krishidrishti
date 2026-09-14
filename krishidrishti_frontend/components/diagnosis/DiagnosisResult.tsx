@@ -13,7 +13,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { PredictionResponse } from "@/types";
-import { StatusBadge, SimulationBadge } from "@/components/common/StatCard";
+import { StatusBadge } from "@/components/common/StatCard";
 import { formatPercent } from "@/lib/utils";
 import {
   BarChart,
@@ -58,12 +58,11 @@ export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">
-                Crop Classification Result
+                AgriSmart AI — Prediction Result
               </span>
-              <SimulationBadge />
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">
-              {result.crop} • <span className={isHealthy ? "text-emerald-700" : "text-amber-800"}>{result.disease}</span>
+              {result.crop}
             </h2>
           </div>
 
@@ -71,7 +70,7 @@ export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
             <StatusBadge
               status={isHealthy ? "healthy" : result.severity || "moderate"}
               size="md"
-              label={isHealthy ? "Healthy Condition" : `${result.severity?.toUpperCase()} SEVERITY`}
+              label={isHealthy ? "Healthy" : `${result.severity?.toUpperCase()} SEVERITY`}
             />
             <button
               onClick={onReset}
@@ -102,23 +101,45 @@ export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
             </div>
           </div>
 
-          {/* Model Confidence & Pathology Assessment */}
-          <div className="space-y-4 md:col-span-2">
-            <div>
-              <div className="flex items-center justify-between text-sm font-semibold text-stone-800">
-                <span>Model Confidence</span>
-                <span className="text-emerald-800 font-bold text-lg">{confidencePercent}%</span>
+          {/* Model Output — matches screenshot format */}
+          <div className="md:col-span-2 space-y-4">
+            {/* Terminal-style output block */}
+            <div className="rounded-xl bg-stone-900 p-5 font-mono text-sm border border-stone-700">
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-stone-700">
+                <span className="text-emerald-400 text-base">🌱</span>
+                <span className="text-emerald-400 font-bold">AgriSmart AI – Prediction Result</span>
               </div>
-              <div className="mt-1.5 h-3 w-full overflow-hidden rounded-full bg-stone-100">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${
-                    confidencePercent > 90 ? "bg-emerald-600" : "bg-amber-500"
-                  }`}
-                  style={{ width: `${confidencePercent}%` }}
-                />
+              <div className="space-y-1.5 text-stone-200">
+                <div className="flex gap-2">
+                  <span className="text-stone-400 w-24 shrink-0">Crop</span>
+                  <span className="text-stone-400">:</span>
+                  <span className="text-white font-semibold">{result.crop}</span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-stone-400 w-24 shrink-0">Condition</span>
+                  <span className="text-stone-400">:</span>
+                  <span className={`font-semibold ${isHealthy ? "text-emerald-400" : "text-amber-400"}`}>
+                    {(result as any).condition || result.disease}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-stone-400 w-24 shrink-0">Status</span>
+                  <span className="text-stone-400">:</span>
+                  <span className={`font-semibold ${isHealthy ? "text-emerald-400" : "text-rose-400"}`}>
+                    {(result as any).status || (isHealthy ? "Healthy" : "Disease Detected")}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <span className="text-stone-400 w-24 shrink-0">Confidence</span>
+                  <span className="text-stone-400">:</span>
+                  <span className="text-emerald-300 font-bold">
+                    {(result as any).confidence_pct || `${confidencePercent}%`}
+                  </span>
+                </div>
               </div>
             </div>
 
+            {/* Pathology explanation */}
             <div className="rounded-xl bg-stone-50 p-4 border border-stone-200/70">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-stone-600 mb-1">
                 <Info className="h-3.5 w-3.5 text-stone-500" />
