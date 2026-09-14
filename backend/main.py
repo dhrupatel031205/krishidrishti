@@ -29,6 +29,62 @@ from typing import List, Optional
 from dotenv import load_dotenv
 load_dotenv()
 
+# ── MongoDB ────────────────────────────────────────────────────────────
+import bcrypt
+import jwt as pyjwt
+from pymongo import MongoClient, DESCENDING
+from pymongo.errors import ConnectionFailure
+from bson import ObjectId
+
+_MONGO_URI = os.getenv("MONGODB_URI", "")
+_JWT_SECRET = os.getenv("JWT_SECRET", "krishidrishti-secret-key")
+_JWT_ALGO = "HS256"
+_JWT_EXP_HOURS = 72
+
+_mongo_client = None
+_db = None
+
+def get_db():
+    global _mongo_client, _db
+    if _db is not None:
+        return _db
+    if not _MONGO_URI:
+        return None
+    try:
+        _mongo_client = MongoClient(_MONGO_URI, serverSelectionTimeoutMS=5000)
+        _mongo_client.admin.command("ping")
+        _db = _mongo_client["krishidrishti"]
+        print("[INFO] MongoDB connected")
+        return _db
+    except Exception as e:
+        print(f"[WARN] MongoDB unavailable: {e}")
+        return None
+
+def _id_str(doc: dict) -> dict:
+    """Convert ObjectId _id to string id for JSON serialization."""
+    if doc and "_id" in doc:
+        doc["id"] = str(doc.pop("_id"))
+    return doc
+
+def _make_token(user_id: str, email: str) -> str:
+    payload = {
+        "sub": user_id,
+        "email": email,
+        "exp": datetime.now(timezone.utc).timestamp() + _JWT_EXP_HOURS * 3600,
+    }
+    return pyjwt.encode(payload, _JWT_SECRET, algorithm=_JWT_ALGO)
+
+def _verify_token(token: str) -> Optional[dict]:
+    try:
+        return pyjwt.decode(token, _JWT_SECRET, algorithms=[_JWT_ALGO])
+    except Exception:
+        return None
+
+def _get_current_user(authorization: str = "") -> Optional[dict]:
+    if not authorization.startswith("Bearer "):
+        return None
+    return _verify_token(authorization[7:])
+
 import joblib
 import requests
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
@@ -162,7 +218,241 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    db = get_db()
+    return {"status": "ok", "mongodb": db is not None}
+
+
+# =====================================================================
+# AUTH - Register / Login / Profile
+# =====================================================================
+
+class RegisterInput(BaseModel):
+    name: str
+    email: str
+    password: str
+    phone: Optional[str] = ""
+    farmName: Optional[str] = ""
+    location: Optional[str] = ""
+
+
+class LoginInput(BaseModel):
+    email: str
+    password: str
+
+
+@app.post("/api/auth/register", tags=["Auth"])
+def register(data: RegisterInput):
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    if db.users.find_one({"email": data.email}):
+        raise HTTPException(409, "Email already registered")
+    hashed = bcrypt.hashpw(data.password.encode(), bcrypt.gensalt()).decode()
+    doc = {
+        "name": data.name,
+        "email": data.email,
+        "password": hashed,
+        "phone": data.phone,
+        "farmName": data.farmName,
+        "location": data.location,
+        "createdAt": datetime.now(timezone.utc).isoformat(),
+    }
+    result = db.users.insert_one(doc)
+    user_id = str(result.inserted_id)
+    token = _make_token(user_id, data.email)
+    return {"token": token, "user": {"id": user_id, "name": data.name, "email": data.email, "phone": data.phone, "farmName": data.farmName, "location": data.location}}
+
+
+@app.post("/api/auth/login", tags=["Auth"])
+def login(data: LoginInput):
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    user = db.users.find_one({"email": data.email})
+    if not user or not bcrypt.checkpw(data.password.encode(), user["password"].encode()):
+        raise HTTPException(401, "Invalid email or password")
+    user_id = str(user["_id"])
+    token = _make_token(user_id, data.email)
+    return {"token": token, "user": {"id": user_id, "name": user["name"], "email": user["email"], "phone": user.get("phone", ""), "farmName": user.get("farmName", ""), "location": user.get("location", "")}}
+
+
+class UpdateProfileInput(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    farmName: Optional[str] = None
+    location: Optional[str] = None
+
+
+@app.get("/api/auth/me", tags=["Auth"])
+def get_me(authorization: str = ""):
+    payload = _get_current_user(authorization)
+    if not payload:
+        raise HTTPException(401, "Unauthorized")
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    user = db.users.find_one({"_id": ObjectId(payload["sub"])})
+    if not user:
+        raise HTTPException(404, "User not found")
+    return {"id": str(user["_id"]), "name": user["name"], "email": user["email"], "phone": user.get("phone", ""), "farmName": user.get("farmName", ""), "location": user.get("location", "")}
+
+
+@app.put("/api/auth/me", tags=["Auth"])
+def update_profile(data: UpdateProfileInput, authorization: str = ""):
+    payload = _get_current_user(authorization)
+    if not payload:
+        raise HTTPException(401, "Unauthorized")
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    updates = {k: v for k, v in data.dict().items() if v is not None}
+    db.users.update_one({"_id": ObjectId(payload["sub"])}, {"$set": updates})
+    return {"message": "Profile updated"}
+
+
+# =====================================================================
+# DIAGNOSIS HISTORY - Full CRUD with MongoDB
+# =====================================================================
+
+@app.get("/api/diagnosis/history", tags=["Core - Crop Disease Detection"])
+def diagnosis_history(authorization: str = ""):
+    db = get_db()
+    payload = _get_current_user(authorization)
+    user_id = payload["sub"] if payload else None
+
+    if db is not None and user_id:
+        docs = list(db.diagnosis_history.find({"userId": user_id}).sort("date", DESCENDING).limit(50))
+        return [_id_str(d) for d in docs]
+
+    # Fallback static data
+    return [
+        {"id": "diag-101", "date": "2026-09-12T10:30:00Z", "crop": "Tomato", "diagnosis": "Tomato Early Blight", "confidence": 0.942, "severity": "moderate", "status": "active", "imageUrl": "https://images.unsplash.com/photo-1592417817098-8f3d6910985c?auto=format&fit=crop&w=400&q=80"},
+        {"id": "diag-102", "date": "2026-09-10T14:15:00Z", "crop": "Potato", "diagnosis": "Potato Late Blight", "confidence": 0.915, "severity": "critical", "status": "treated", "imageUrl": "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=400&q=80"},
+        {"id": "diag-103", "date": "2026-09-08T09:00:00Z", "crop": "Bell Pepper", "diagnosis": "Healthy Foliage", "confidence": 0.985, "severity": "healthy", "status": "monitoring", "imageUrl": "https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?auto=format&fit=crop&w=400&q=80"},
+        {"id": "diag-104", "date": "2026-09-04T16:45:00Z", "crop": "Wheat", "diagnosis": "Wheat Yellow Rust", "confidence": 0.892, "severity": "moderate", "status": "treated", "imageUrl": "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=400&q=80"},
+        {"id": "diag-105", "date": "2026-09-01T11:20:00Z", "crop": "Apple", "diagnosis": "Apple Scab", "confidence": 0.931, "severity": "low", "status": "monitoring", "imageUrl": "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=400&q=80"},
+    ]
+
+
+@app.put("/api/diagnosis/{diagnosis_id}/status", tags=["Core - Crop Disease Detection"])
+def update_diagnosis_status(diagnosis_id: str, status: str = Query(...), authorization: str = ""):
+    payload = _get_current_user(authorization)
+    if not payload:
+        raise HTTPException(401, "Unauthorized")
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    db.diagnosis_history.update_one(
+        {"_id": ObjectId(diagnosis_id), "userId": payload["sub"]},
+        {"$set": {"status": status}}
+    )
+    return {"message": "Status updated"}
+
+
+@app.delete("/api/diagnosis/{diagnosis_id}", tags=["Core - Crop Disease Detection"])
+def delete_diagnosis(diagnosis_id: str, authorization: str = ""):
+    payload = _get_current_user(authorization)
+    if not payload:
+        raise HTTPException(401, "Unauthorized")
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    db.diagnosis_history.delete_one({"_id": ObjectId(diagnosis_id), "userId": payload["sub"]})
+    return {"message": "Deleted"}
+
+
+# =====================================================================
+# CHAT HISTORY - Save & retrieve assistant conversations
+# =====================================================================
+
+class SaveChatInput(BaseModel):
+    messages: list
+    sessionId: Optional[str] = None
+
+
+@app.post("/api/chat/save", tags=["E - Farmer Assistant"])
+def save_chat(data: SaveChatInput, authorization: str = ""):
+    payload = _get_current_user(authorization)
+    if not payload:
+        raise HTTPException(401, "Unauthorized")
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    session_id = data.sessionId or f"session-{int(datetime.now(timezone.utc).timestamp())}"
+    db.chat_history.update_one(
+        {"userId": payload["sub"], "sessionId": session_id},
+        {"$set": {"messages": data.messages, "updatedAt": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+    )
+    return {"sessionId": session_id}
+
+
+@app.get("/api/chat/history", tags=["E - Farmer Assistant"])
+def get_chat_history(authorization: str = ""):
+    payload = _get_current_user(authorization)
+    if not payload:
+        raise HTTPException(401, "Unauthorized")
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    sessions = list(db.chat_history.find({"userId": payload["sub"]}).sort("updatedAt", DESCENDING).limit(20))
+    return [_id_str(s) for s in sessions]
+
+
+@app.delete("/api/chat/{session_id}", tags=["E - Farmer Assistant"])
+def delete_chat_session(session_id: str, authorization: str = ""):
+    payload = _get_current_user(authorization)
+    if not payload:
+        raise HTTPException(401, "Unauthorized")
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    db.chat_history.delete_one({"sessionId": session_id, "userId": payload["sub"]})
+    return {"message": "Session deleted"}
+
+
+# =====================================================================
+# CROP RECOMMENDATIONS - Save history
+# =====================================================================
+
+@app.get("/api/recommendations/history", tags=["A - Crop Recommendation"])
+def get_recommendation_history(authorization: str = ""):
+    payload = _get_current_user(authorization)
+    if not payload:
+        raise HTTPException(401, "Unauthorized")
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    docs = list(db.recommendations.find({"userId": payload["sub"]}).sort("createdAt", DESCENDING).limit(20))
+    return [_id_str(d) for d in docs]
+
+
+@app.delete("/api/recommendations/{rec_id}", tags=["A - Crop Recommendation"])
+def delete_recommendation(rec_id: str, authorization: str = ""):
+    payload = _get_current_user(authorization)
+    if not payload:
+        raise HTTPException(401, "Unauthorized")
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    db.recommendations.delete_one({"_id": ObjectId(rec_id), "userId": payload["sub"]})
+    return {"message": "Deleted"}
+
+
+# =====================================================================
+# SENSOR READINGS - Store IoT telemetry
+# =====================================================================
+
+@app.get("/api/sensor/history", tags=["F - IoT (simulated)"])
+def get_sensor_history(n: int = Query(24, ge=1, le=200), authorization: str = ""):
+    payload = _get_current_user(authorization)
+    if not payload:
+        raise HTTPException(401, "Unauthorized")
+    db = get_db()
+    if db is None:
+        raise HTTPException(503, "Database unavailable")
+    docs = list(db.sensor_readings.find({"userId": payload["sub"]}).sort("timestamp", DESCENDING).limit(n))
+    return [_id_str(d) for d in docs]
 
 
 @app.get("/debug/model")
@@ -443,7 +733,7 @@ def _match_disease(filename: str, image_bytes: bytes = b"") -> dict:
 
 
 @app.post("/api/predict", tags=["Core - Crop Disease Detection"])
-async def predict_disease(file: UploadFile = File(...)):
+async def predict_disease(file: UploadFile = File(...), authorization: str = ""):
     """Accepts a leaf image and returns a structured disease diagnosis."""
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=422, detail="Only image files are accepted.")
@@ -467,8 +757,9 @@ async def predict_disease(file: UploadFile = File(...)):
     status = "Healthy" if healthy else "Disease Detected"
     recs = _groq_recommendations(crop, condition, healthy)
 
-    return {
-        "id": f"diag-{int(datetime.now(timezone.utc).timestamp())}",
+    diag_id = f"diag-{int(datetime.now(timezone.utc).timestamp())}"
+    result = {
+        "id": diag_id,
         "crop": crop,
         "condition": condition,
         "status": status,
@@ -487,6 +778,24 @@ async def predict_disease(file: UploadFile = File(...)):
         "dataset": "PlantVillage (38 classes, 54,305 images)",
         "input_size": "224x224",
     }
+
+    # Persist to MongoDB if user is authenticated
+    db = get_db()
+    payload = _get_current_user(authorization)
+    if db is not None and payload:
+        db.diagnosis_history.insert_one({
+            "userId": payload["sub"],
+            "date": datetime.now(timezone.utc).isoformat(),
+            "crop": crop,
+            "diagnosis": condition,
+            "confidence": d["confidence"],
+            "severity": d["severity"],
+            "status": "active",
+            "imageUrl": "",  # don't store base64 in history
+            "recommendations": recs,
+        })
+
+    return result
 
 
 def _groq_recommendations(crop: str, disease: str, healthy: bool) -> dict:
@@ -667,7 +976,7 @@ class SoilInput(BaseModel):
 
 
 @app.post("/recommend-crop", tags=["A - Crop Recommendation"])
-def recommend_crop(data: SoilInput):
+def recommend_crop(data: SoilInput, authorization: str = ""):
     try:
         bundle = _load_crop()
     except FileNotFoundError as e:
@@ -680,12 +989,23 @@ def recommend_crop(data: SoilInput):
         proba = model.predict_proba(row)[0]
         classes = bundle.get("classes", model.classes_)
         result["confidence"] = round(float(max(proba)), 3)
-        # Return top 3 crops by probability
         top3_idx = sorted(range(len(proba)), key=lambda i: proba[i], reverse=True)[:3]
         result["top_crops"] = [
             {"crop": str(classes[i]), "confidence": round(float(proba[i]), 3)}
             for i in top3_idx
         ]
+
+    # Persist to MongoDB if authenticated
+    db = get_db()
+    payload = _get_current_user(authorization)
+    if db is not None and payload:
+        db.recommendations.insert_one({
+            "userId": payload["sub"],
+            "createdAt": datetime.now(timezone.utc).isoformat(),
+            "input": data.dict(),
+            "result": result,
+        })
+
     return result
 
 
@@ -945,10 +1265,20 @@ def _reading_at(dt: datetime, state: dict) -> dict:
 
 
 @app.get("/sensor-feed", tags=["F - IoT (simulated)"])
-def sensor_feed(n: int = Query(1, ge=1, le=50)):
+def sensor_feed(n: int = Query(1, ge=1, le=50), authorization: str = ""):
     """Returns the last n readings, 10 min apart, ending now (a live stream)."""
     now = datetime.now(timezone.utc)
     readings = [_reading_at(now - timedelta(minutes=10 * (n - 1 - i)), _sensor_state)
                 for i in range(n)]
+
+    # Persist latest reading to MongoDB if authenticated
+    db = get_db()
+    payload = _get_current_user(authorization)
+    if db is not None and payload:
+        db.sensor_readings.insert_one({
+            "userId": payload["sub"],
+            **readings[-1],
+        })
+
     return {"source": "simulated", "interval_minutes": 10,
             "latest": readings[-1], "readings": readings}

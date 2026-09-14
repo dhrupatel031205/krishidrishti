@@ -8,4 +8,8 @@ services:
     envVars:
       - key: LLM_API_KEY
         sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
     healthCheckPath: /health

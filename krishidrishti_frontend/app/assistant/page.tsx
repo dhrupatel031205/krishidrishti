@@ -91,8 +91,22 @@ export default function AssistantPage() {
                     : "bg-stone-50 border border-stone-200/80 text-stone-800"
                 }`}
               >
-                <div className="whitespace-pre-line leading-relaxed">
-                  {msg.content}
+                <div className="leading-relaxed space-y-1">
+                  {msg.content.split("\n").map((line, i) => {
+                    // Render each line with inline bold (**text**) support
+                    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+                    return (
+                      <p key={i} className={line === "" ? "h-2" : ""}>
+                        {parts.map((part, j) =>
+                          part.startsWith("**") && part.endsWith("**") ? (
+                            <strong key={j}>{part.slice(2, -2)}</strong>
+                          ) : (
+                            part
+                          )
+                        )}
+                      </p>
+                    );
+                  })}
                 </div>
                 <div
                   className={`text-[10px] ${

@@ -37,6 +37,17 @@ const IS_DIAGNOSIS_LIVE = !!API_BASE_URL;
 const DEFAULT_LAT = process.env.NEXT_PUBLIC_DEFAULT_LAT || "29.6857";
 const DEFAULT_LON = process.env.NEXT_PUBLIC_DEFAULT_LON || "76.9905";
 
+function getAuthHeaders(): Record<string, string> {
+  try {
+    const saved = localStorage.getItem("krishidrishti_auth");
+    if (saved) {
+      const { token } = JSON.parse(saved);
+      if (token && token !== "demo-token") return { Authorization: `Bearer ${token}` };
+    }
+  } catch {}
+  return {};
+}
+
 // ==========================================
 // 1. CROP DISEASE DETECTION API
 // ==========================================
@@ -73,7 +84,7 @@ export async function predictCropDisease(fileOrSampleId: File | string): Promise
     formData.append("file", new File([blob], `${fileOrSampleId}.jpg`, { type: "image/jpeg" }));
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/predict`, { method: "POST", body: formData });
+  const response = await fetch(`${API_BASE_URL}/api/predict`, { method: "POST", body: formData, headers: getAuthHeaders() });
   if (!response.ok) throw new Error(`Inference engine failed with status ${response.status}`);
   return response.json();
 }
@@ -83,7 +94,7 @@ export async function fetchDiagnosisHistory(): Promise<DiagnosisHistoryItem[]> {
     await new Promise((r) => setTimeout(r, 300));
     return mockDiagnosisHistory;
   }
-  const response = await fetch(`${API_BASE_URL}/api/diagnosis/history`);
+  const response = await fetch(`${API_BASE_URL}/api/diagnosis/history`, { headers: getAuthHeaders() });
   if (!response.ok) throw new Error("Failed to fetch diagnosis history");
   return response.json();
 }
@@ -112,7 +123,7 @@ export async function getCropRecommendations(input: CropRecommendationInput): Pr
 
   const response = await fetch(`${API_BASE_URL}/recommend-crop`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     body: JSON.stringify(payload),
   });
 
@@ -180,14 +191,14 @@ export async function fetchIrrigationStatus(): Promise<IrrigationStatus> {
     return mockIrrigationStatus;
   }
   // Use sensor feed to get current soil moisture, then call irrigation endpoint
-  const sensorRes = await fetch(`${API_BASE_URL}/sensor-feed?n=1`);
+  const sensorRes = await fetch(`${API_BASE_URL}/sensor-feed?n=1`, { headers: getAuthHeaders() });
   if (!sensorRes.ok) throw new Error("Failed to fetch sensor data for irrigation");
   const sensorData = await sensorRes.json();
   const latest = sensorData.latest;
 
   const irrigRes = await fetch(`${API_BASE_URL}/irrigation`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     body: JSON.stringify({
       soil_moisture: latest.soil_moisture,
       growth_stage: "vegetative",
@@ -358,7 +369,7 @@ export async function fetchSensorDashboard(): Promise<SensorDashboardData> {
     await new Promise((r) => setTimeout(r, 400));
     return mockSensorData;
   }
-  const response = await fetch(`${API_BASE_URL}/sensor-feed?n=6`);
+  const response = await fetch(`${API_BASE_URL}/sensor-feed?n=6`, { headers: getAuthHeaders() });
   if (!response.ok) throw new Error("Failed to fetch sensor telemetry");
   const data = await response.json();
   const latest = data.latest;
