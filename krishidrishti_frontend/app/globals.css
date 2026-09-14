@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: #fbfaf8;
+    --foreground: #1c2826;
+    
+    /* Deep Forest Green */
+    --forest-900: #0e271a;
+    --forest-800: #143823;
+    --forest-700: #1b4332;
+    --forest-600: #2d6a4f;
+    
+    /* Agricultural & Leaf Green */
+    --leaf-500: #40916c;
+    --leaf-400: #52b788;
+    --leaf-300: #74c69d;
+    --leaf-200: #95d5b2;
+    --leaf-100: #d8f3dc;
+    
+    /* Warm Earthy Tones */
+    --earth-900: #463f3a;
+    --earth-700: #8a7968;
+    --earth-500: #b08968;
+    --earth-300: #ddb892;
+    --earth-100: #f4ede4;
+    --earth-50: #fdfbf7;
+
+    /* Semantic Alerts */
+    --status-healthy: #2d6a4f;
+    --status-warning: #d97706;
+    --status-critical: #dc2626;
+    --status-water: #0284c7;
+    --status-neutral: #64748b;
+  }
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1ede5;
+}
+::-webkit-scrollbar-thumb {
+  background: #c8bdae;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9d8f7e;
+}
+
+/* Subtle glassmorphism */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(221, 184, 146, 0.25);
+}
+
+.agri-card {
+  background: #ffffff;
+  border: 1px solid #ede8df;
+  box-shadow: 0 1px 3px 0 rgba(20, 56, 35, 0.04), 0 1px 2px -1px rgba(20, 56, 35, 0.02);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.agri-card:hover {
+  border-color: #d4cfc4;
+  box-shadow: 0 4px 12px 0 rgba(20, 56, 35, 0.06);
+}
