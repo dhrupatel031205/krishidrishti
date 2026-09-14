@@ -29,10 +29,35 @@ export default function IrrigationPage() {
   const [irrigationActive, setIrrigationActive] = useState(false);
   const [irrigationTimer, setIrrigationTimer] = useState(0);
 
-  const load = useCallback(async (stage: string) => {
+  const dataRef = React.useRef<IrrigationStatus | null>(null);
+
+  const load = useCallback(async (stage: string, forceRefresh = false) => {
+    // If only the stage changed (not a manual refresh), keep existing moisture
+    // and just recalculate thresholds locally — avoids random sensor drift on stage switch
+    if (!forceRefresh && dataRef.current) {
+      const threshold = GROWTH_STAGES.find((s) => s.value === stage)!.threshold;
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              targetMoistureMin: threshold - 10,
+              targetMoistureMax: threshold + 15,
+              status:
+                prev.currentMoisture < threshold
+                  ? "needs_water"
+                  : prev.currentMoisture > threshold + 15
+                  ? "saturated"
+                  : "optimal",
+              history: prev.history.map((h) => ({ ...h, threshold })),
+            }
+          : prev
+      );
+      return;
+    }
     setLoading(true);
     try {
       const result = await fetchIrrigationStatus(stage);
+      dataRef.current = result;
       setData(result);
     } finally {
       setLoading(false);
@@ -41,6 +66,7 @@ export default function IrrigationPage() {
 
   useEffect(() => {
     load(growthStage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [growthStage]);
 
   // Irrigation timer — counts up seconds when active
@@ -86,7 +112,7 @@ export default function IrrigationPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => load(growthStage)}
+              onClick={() => load(growthStage, true)}
               disabled={loading}
               className="p-2 rounded-xl border border-stone-200 bg-white text-stone-600 hover:bg-stone-50 transition-colors disabled:opacity-50"
               title="Refresh"
