@@ -159,6 +159,34 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/debug/model")
+def debug_model():
+    """Diagnose model loading status — remove before production."""
+    info = {
+        "torch_available": TORCH_AVAILABLE,
+        "model_path": str(_DISEASE_MODEL_PATH),
+        "model_file_exists": _DISEASE_MODEL_PATH.exists(),
+        "model_loaded": _disease_model_bundle is not None,
+    }
+    if _DISEASE_MODEL_PATH.exists() and TORCH_AVAILABLE and _disease_model_bundle is None:
+        # Try loading now and capture any error
+        try:
+            checkpoint = torch.load(
+                str(_DISEASE_MODEL_PATH),
+                map_location=torch.device("cpu"),
+                weights_only=False,
+            )
+            info["checkpoint_keys"] = list(checkpoint.keys())
+            info["num_classes"] = checkpoint.get("num_classes")
+            info["class_names_count"] = len(checkpoint.get("class_names", []))
+            info["load_error"] = None
+        except Exception as e:
+            info["load_error"] = str(e)
+    elif _disease_model_bundle is not None:
+        info["class_names_count"] = len(_disease_model_bundle["class_names"])
+    return info
+
+
 # =====================================================================
 # CORE - Crop Disease Detection  (rule-based on filename/content)
 # =====================================================================
