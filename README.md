@@ -188,8 +188,8 @@ The video demonstrates:
 ## 7. Deployed App
 
 🌐 **Frontend:** [https://krishidrashtiai.vercel.app](https://krishidrashtiai.vercel.app)  
-🔌 **Backend API:** [https://krishidrishti-backend.onrender.com](<INSERT_RENDER_URL>)  
-📖 **API Docs:** `<backend-url>/docs`
+🔌 **Backend API:** [https://krishidrishti-1-nva8.onrender.com](https://krishidrishti-1-nva8.onrender.com)  
+📖 **API Docs:** [https://krishidrishti-1-nva8.onrender.com/docs](https://krishidrishti-1-nva8.onrender.com/docs)
 
 ---
 

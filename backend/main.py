@@ -170,17 +170,67 @@ def _load_disease_model():
 
 
 def _predict_disease_model(image_bytes: bytes):
-    """Run real EfficientNet inference. Returns (class_name, confidence, top5)."""
+    """Run EfficientNet inference with Test-Time Augmentation (TTA).
+    Averages predictions across 5 augmented views for better field-condition accuracy.
+    Returns (class_name, confidence, top5).
+    """
     bundle = _load_disease_model()
     if bundle is None:
         return None
     try:
         img = PILImage.open(io.BytesIO(image_bytes)).convert("RGB")
-        tensor = _INFER_TRANSFORM(img).unsqueeze(0)
+        image_size = 224
+
+        # TTA: 5 augmented views of the same image
+        tta_transforms = [
+            # 1. Standard centre crop (baseline)
+            transforms.Compose([
+                transforms.Resize((image_size, image_size)),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]),
+            # 2. Horizontal flip
+            transforms.Compose([
+                transforms.Resize((image_size, image_size)),
+                transforms.RandomHorizontalFlip(p=1.0),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]),
+            # 3. Slight brightness/contrast shift (field lighting variation)
+            transforms.Compose([
+                transforms.Resize((image_size, image_size)),
+                transforms.ColorJitter(brightness=0.3, contrast=0.3),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]),
+            # 4. Random crop (partial leaf / zoom)
+            transforms.Compose([
+                transforms.Resize((256, 256)),
+                transforms.CenterCrop(image_size),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]),
+            # 5. Slight rotation (angled field photo)
+            transforms.Compose([
+                transforms.Resize((image_size, image_size)),
+                transforms.RandomRotation(degrees=15),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]),
+        ]
+
+        all_probs = []
         with torch.no_grad():
-            outputs = bundle["model"](tensor)
-            probs = torch.softmax(outputs, dim=1)[0]
-        top5_vals, top5_idx = torch.topk(probs, min(5, len(probs)))
+            for tfm in tta_transforms:
+                tensor = tfm(img).unsqueeze(0)
+                outputs = bundle["model"](tensor)
+                probs = torch.softmax(outputs, dim=1)[0]
+                all_probs.append(probs)
+
+        # Average probabilities across all TTA views
+        avg_probs = torch.stack(all_probs).mean(dim=0)
+
+        top5_vals, top5_idx = torch.topk(avg_probs, min(5, len(avg_probs)))
         class_names = bundle["class_names"]
         top5 = [
             {"className": class_names[i.item()], "probability": round(v.item(), 4)}
