@@ -80,7 +80,7 @@ export function DiagnosisResult({ result, onReset }: DiagnosisResultProps) {
             />
             <DownloadReportButton
               reportTitle="Crop Disease Diagnosis"
-              filename={`diagnosis_${result.crop.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.txt`}
+              filename={`diagnosis_${result.crop.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`}
               getData={() => ({
                 crop: result.crop,
                 condition: result.condition || result.disease,
