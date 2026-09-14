@@ -52,7 +52,7 @@ export default function DashboardPage() {
       featureFlags.weather ? fetchAgroWeather().then(setWeather) : Promise.resolve(),
       featureFlags.sustainability ? fetchSustainabilityReport().then(setSustainability) : Promise.resolve(),
       featureFlags.monitoring ? fetchSensorDashboard().then(setSensors) : Promise.resolve(),
-      featureFlags.advisor ? fetchAdvisoryBriefings().then(setBriefings) : Promise.resolve(),
+      featureFlags.advisor ? fetchAdvisoryBriefings().then(({ briefings }) => setBriefings(briefings)) : Promise.resolve(),
     ]).finally(() => setPageLoading(false));
   }, []);
 
