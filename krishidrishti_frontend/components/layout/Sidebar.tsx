@@ -128,7 +128,7 @@ export function Sidebar({
   const activeNavItems = navItems.filter((item) => item.enabled);
 
   const navContent = (
-    <div className="flex h-full flex-col justify-between bg-stone-900 text-stone-100 p-3 overflow-hidden select-none">
+    <div className="flex h-full flex-col bg-stone-900 text-stone-100 p-3 overflow-hidden select-none">
       <div>
         {/* Brand Header & Toggle Button */}
         <div className="flex items-center justify-between pb-4 pt-2 border-b border-stone-800/80 min-h-[64px] px-1 overflow-hidden">
@@ -206,7 +206,7 @@ export function Sidebar({
         )}
 
         {/* Navigation links */}
-        <nav className="mt-5 space-y-1.5">
+        <nav className="mt-5 space-y-1.5 overflow-y-auto flex-1 pr-0.5" style={{ maxHeight: "calc(100vh - 180px)" }}>
           {activeNavItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
             const Icon = item.icon;
