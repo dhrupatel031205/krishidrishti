@@ -522,29 +522,39 @@ def get_sensor_history(n: int = Query(24, ge=1, le=200), authorization: str = He
 
 @app.get("/debug/model")
 def debug_model():
-    """Diagnose model loading status — remove before production."""
+    """Diagnose model loading — triggers a real load attempt and reports status."""
     info = {
         "torch_available": TORCH_AVAILABLE,
         "model_path": str(_DISEASE_MODEL_PATH),
         "model_file_exists": _DISEASE_MODEL_PATH.exists(),
-        "model_loaded": _disease_model_bundle is not None,
+        "model_loaded_before_this_call": _disease_model_bundle is not None,
     }
-    if _DISEASE_MODEL_PATH.exists() and TORCH_AVAILABLE and _disease_model_bundle is None:
-        # Try loading now and capture any error
+    if not TORCH_AVAILABLE:
+        info["status"] = "FAIL — torch not installed. Run: pip install torch torchvision"
+        return info
+    if not _DISEASE_MODEL_PATH.exists():
+        info["status"] = f"FAIL — .pth file not found at {_DISEASE_MODEL_PATH}"
+        return info
+    # Force a load attempt now
+    bundle = _load_disease_model()
+    if bundle is None:
+        info["status"] = "FAIL — model file exists but failed to load (check logs for [WARN])"
+        # Try raw checkpoint inspection to surface the error
         try:
-            checkpoint = torch.load(
-                str(_DISEASE_MODEL_PATH),
-                map_location=torch.device("cpu"),
-                weights_only=False,
-            )
+            checkpoint = torch.load(str(_DISEASE_MODEL_PATH), map_location="cpu", weights_only=False)
             info["checkpoint_keys"] = list(checkpoint.keys())
-            info["num_classes"] = checkpoint.get("num_classes")
+            info["num_classes_in_checkpoint"] = checkpoint.get("num_classes")
             info["class_names_count"] = len(checkpoint.get("class_names", []))
-            info["load_error"] = None
+            info["image_size"] = checkpoint.get("image_size", 224)
+            info["has_model_state_dict"] = "model_state_dict" in checkpoint
         except Exception as e:
-            info["load_error"] = str(e)
-    elif _disease_model_bundle is not None:
-        info["class_names_count"] = len(_disease_model_bundle["class_names"])
+            info["checkpoint_load_error"] = str(e)
+        return info
+    info["status"] = "OK — model loaded and ready"
+    info["class_names_count"] = len(bundle["class_names"])
+    info["first_3_classes"] = bundle["class_names"][:3]
+    info["last_3_classes"] = bundle["class_names"][-3:]
+    info["using_real_model"] = True
     return info
 
 
@@ -898,24 +908,10 @@ _PLANT_KEYWORDS = {
 
 
 def _load_validator_model():
-    """Lazy-load MobileNetV3-Small with pretrained ImageNet weights."""
-    global _VALIDATOR_MODEL, _VALIDATOR_TRANSFORM
-    if _VALIDATOR_MODEL is not None:
-        return _VALIDATOR_MODEL, _VALIDATOR_TRANSFORM
-    if not TORCH_AVAILABLE:
-        return None, None
-    try:
-        from torchvision.models import mobilenet_v3_small, MobileNet_V3_Small_Weights
-        weights = MobileNet_V3_Small_Weights.IMAGENET1K_V1
-        model = mobilenet_v3_small(weights=weights)
-        model.eval()
-        _VALIDATOR_TRANSFORM = weights.transforms()
-        _VALIDATOR_MODEL = model
-        print("[INFO] Leaf validator (MobileNetV3) loaded")
-        return _VALIDATOR_MODEL, _VALIDATOR_TRANSFORM
-    except Exception as e:
-        print(f"[WARN] Could not load validator model: {e}")
-        return None, None
+    """Validator disabled — MobileNetV3 requires internet download on cold start.
+    Leaf validation is handled by brightness/resolution checks in _validate_plant_image().
+    """
+    return None, None
 
 
 def _imagenet_is_plant(image: "PILImage.Image") -> tuple[bool, str]:
