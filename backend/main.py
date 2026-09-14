@@ -69,7 +69,8 @@ def _load_disease_model():
             map_location=torch.device("cpu"),
             weights_only=False,
         )
-        num_classes = checkpoint["num_classes"]
+        class_names = checkpoint["class_names"]
+        num_classes = checkpoint.get("num_classes", len(class_names))
         model = efficientnet_b0(weights=None)
         in_features = model.classifier[1].in_features
         model.classifier[1] = nn.Linear(in_features, num_classes)
