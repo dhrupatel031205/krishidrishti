@@ -747,6 +747,86 @@ def _match_disease(filename: str, image_bytes: bytes = b"") -> dict:
     return _DISEASE_KB[disease_keys[seed % len(disease_keys)]]
 
 
+def _validate_plant_image(image_bytes: bytes) -> tuple[bool, str]:
+    """
+    2-step plant/leaf image validator — runs BEFORE the disease model.
+
+    Step 1 — Image quality checks:
+      1. Minimum resolution
+      2. Extreme aspect ratio
+      3. Brightness (too dark / overexposed)
+      4. Blur (Laplacian variance)
+      5. Variance/entropy (blank, solid color, logo)
+
+    Step 2 — Plant/leaf presence check:
+      6. Vegetation pixel ratio (green/brown/yellow leaf pixels)
+
+    Returns (is_valid, rejection_reason)
+    """
+    try:
+        import numpy as np
+        img = PILImage.open(io.BytesIO(image_bytes)).convert("RGB")
+        w, h = img.size
+
+        # 1. Minimum resolution
+        if w < 64 or h < 64:
+            return False, "Image resolution is too low. Please upload a clear, high-resolution crop leaf photo."
+
+        # 2. Extreme aspect ratio
+        ratio = w / h
+        if ratio > 4.0 or ratio < 0.25:
+            return False, "Image dimensions look unusual. Please upload a close-up photo of a single crop leaf."
+
+        small = img.resize((128, 128), PILImage.LANCZOS)
+        arr = np.array(small, dtype=np.float32)
+        gray_arr = np.array(small.convert("L"), dtype=np.float32)
+
+        # 3. Brightness check — reject completely dark or overexposed images
+        mean_brightness = float(gray_arr.mean())
+        if mean_brightness < 20:
+            return False, "Image is too dark. Please take the photo in good lighting conditions."
+        if mean_brightness > 245:
+            return False, "Image is overexposed. Please avoid direct flash or bright sunlight on the leaf."
+
+        # 4. Blur detection — Laplacian variance (low = blurry)
+        # Approximate Laplacian with a simple kernel
+        from PIL import ImageFilter
+        lap = np.array(small.convert("L").filter(ImageFilter.FIND_EDGES), dtype=np.float32)
+        blur_score = float(np.var(lap))
+        if blur_score < 15:
+            return False, "Image is too blurry. Please hold the camera steady and ensure the leaf is in focus."
+
+        # 5. Variance check — reject blank / solid-color / logo images
+        variance = float(np.var(gray_arr))
+        if variance < 80:
+            return False, "Image appears to be blank, a solid color, or a logo. Please upload a real crop leaf photo."
+
+        # 6. Vegetation pixel ratio — plant/leaf presence gate
+        r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
+        green_mask      = (g > r + 10) & (g > b + 5) & (g > 40) & (g < 230)
+        brown_mask      = (r > 80) & (g > 50) & (b < 100) & (r > g) & (r > b)
+        dark_green_mask = (g > r) & (g > b) & (g < 100)
+        yellow_mask     = (r > 150) & (g > 150) & (b < 80)  # yellowing/diseased leaves
+
+        veg_ratio = (
+            green_mask.sum() + brown_mask.sum() +
+            dark_green_mask.sum() + yellow_mask.sum()
+        ) / (128 * 128)
+
+        if veg_ratio < 0.08:
+            return False, (
+                "No plant or leaf detected in this image. "
+                "Please upload a clear photo of a crop leaf or plant foliage. "
+                "Images of people, animals, buildings, or objects are not supported."
+            )
+
+        return True, ""
+
+    except Exception as e:
+        return False, f"Could not process image: {str(e)}. Please upload a valid JPG, PNG, or WEBP file."
+
+
+
 @app.post("/api/predict", tags=["Core - Crop Disease Detection"])
 async def predict_disease(file: UploadFile = File(...), authorization: str = ""):
     """Accepts a leaf image and returns a structured disease diagnosis."""
@@ -754,6 +834,16 @@ async def predict_disease(file: UploadFile = File(...), authorization: str = "")
         raise HTTPException(status_code=422, detail="Only image files are accepted.")
 
     contents = await file.read()
+
+    # ── Step 1: Validate it is actually a plant/leaf image ──────────────
+    is_valid, rejection_reason = _validate_plant_image(contents)
+    if not is_valid:
+        raise HTTPException(
+            status_code=422,
+            detail={"type": "invalid_image", "message": rejection_reason},
+        )
+    # ── Step 2: Run disease classification ──────────────────────────────
+
     image_b64 = base64.b64encode(contents).decode("utf-8")
     data_url = f"data:{file.content_type};base64,{image_b64}"
 

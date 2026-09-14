@@ -23,9 +23,9 @@ export default function DiagnosisPage() {
         ...response,
         imageUrl: previewUrl,
       });
-    } catch (err) {
-      console.error(err);
-      setError("Unable to analyze the image right now. Please try again with a clear photo.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unable to analyze the image right now.";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -67,8 +67,8 @@ export default function DiagnosisPage() {
           </div>
         </div>
 
-        {/* Error Alert */}
-        {error && (
+        {/* Error Alert — only shown for non-validation errors (network, server) */}
+        {error && !error.includes("leaf") && !error.includes("plant") && !error.includes("blank") && !error.includes("resolution") && (
           <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
             <AlertCircle className="h-5 w-5 shrink-0" />
             <p>{error}</p>
@@ -77,7 +77,7 @@ export default function DiagnosisPage() {
 
         {/* Primary Diagnosis Flow */}
         {!result ? (
-          <ImageUploader onAnalyze={handleAnalyze} isLoading={loading} />
+          <ImageUploader onAnalyze={handleAnalyze} isLoading={loading} validationError={error} />
         ) : (
           <DiagnosisResult result={result} onReset={handleReset} />
         )}

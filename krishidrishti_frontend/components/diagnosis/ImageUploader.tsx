@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 interface ImageUploaderProps {
   onAnalyze: (fileOrSampleId: File | string, previewUrl: string) => void;
   isLoading: boolean;
+  validationError?: string | null;
 }
 
-export function ImageUploader({ onAnalyze, isLoading }: ImageUploaderProps) {
+export function ImageUploader({ onAnalyze, isLoading, validationError }: ImageUploaderProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export function ImageUploader({ onAnalyze, isLoading }: ImageUploaderProps) {
     onDrop,
     accept: { "image/*": [".jpeg", ".jpg", ".png", ".webp"] },
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 10 * 1024 * 1024,
   });
 
   const handleSelectSample = (sample: typeof sampleLeaves[0]) => {
@@ -54,6 +55,22 @@ export function ImageUploader({ onAnalyze, isLoading }: ImageUploaderProps) {
 
   return (
     <div className="space-y-6">
+
+      {/* Validation rejection banner */}
+      {validationError && (
+        <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+          <AlertCircle className="h-5 w-5 shrink-0 text-rose-500 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-rose-800">Invalid Image — Not a Crop Leaf</p>
+            <p className="mt-0.5 text-xs text-rose-700 leading-relaxed">{validationError}</p>
+            <p className="mt-2 text-xs text-rose-600 font-medium">
+              ✅ Accepted: crop leaves, plant foliage, diseased leaf close-ups<br />
+              ❌ Rejected: people, animals, buildings, cars, landscapes, blank images
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Upload Box or Image Preview */}
       {!previewUrl ? (
         <div
@@ -75,7 +92,6 @@ export function ImageUploader({ onAnalyze, isLoading }: ImageUploaderProps) {
           <p className="mt-1 text-sm text-stone-500 max-w-md">
             Drag & drop high-resolution photo here, or click to browse files. Supports JPG, PNG, WEBP up to 10MB.
           </p>
-
           <div className="mt-4 flex items-center gap-4 text-xs text-stone-400">
             <span>✓ High Contrast</span>
             <span>•</span>
@@ -104,13 +120,8 @@ export function ImageUploader({ onAnalyze, isLoading }: ImageUploaderProps) {
           </div>
 
           <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            {/* Image Preview Box */}
             <div className="relative aspect-4/3 w-full overflow-hidden rounded-xl bg-stone-100 border border-stone-200">
-              <img
-                src={previewUrl}
-                alt="Uploaded Leaf Preview"
-                className="h-full w-full object-cover"
-              />
+              <img src={previewUrl} alt="Uploaded Leaf Preview" className="h-full w-full object-cover" />
               {isLoading && (
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex flex-col items-center justify-center text-white p-4 text-center">
                   <div className="h-8 w-8 rounded-full border-3 border-emerald-400 border-t-transparent animate-spin mb-3" />
@@ -120,7 +131,6 @@ export function ImageUploader({ onAnalyze, isLoading }: ImageUploaderProps) {
               )}
             </div>
 
-            {/* Inference Action Panel */}
             <div className="space-y-4">
               <div className="rounded-xl bg-stone-50 p-4 border border-stone-200/80">
                 <div className="text-xs font-semibold uppercase tracking-wider text-stone-500">
@@ -158,7 +168,7 @@ export function ImageUploader({ onAnalyze, isLoading }: ImageUploaderProps) {
         </div>
       )}
 
-      {/* Preloaded Sample Leaves for SIH Evaluators */}
+      {/* Preloaded Sample Leaves */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold uppercase tracking-wider text-stone-500 flex items-center gap-1.5">
@@ -186,9 +196,7 @@ export function ImageUploader({ onAnalyze, isLoading }: ImageUploaderProps) {
                 className="h-12 w-12 rounded-lg object-cover border border-stone-200 shrink-0"
               />
               <div className="overflow-hidden">
-                <div className="font-semibold text-xs text-stone-900 truncate">
-                  {sample.label}
-                </div>
+                <div className="font-semibold text-xs text-stone-900 truncate">{sample.label}</div>
                 <div className="text-[11px] text-stone-500 truncate">{sample.crop}</div>
               </div>
             </button>
