@@ -8,6 +8,10 @@ export const metadata: Metadata = {
   title: "KrishiDrishti | Intelligent Crop Health & Smart Agriculture",
   description:
     "AI-powered intelligent agriculture platform focused on crop disease detection, soil-based crop recommendation, smart irrigation, weather intelligence, sustainability scoring, IoT monitoring, and an AI farmer assistant.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
