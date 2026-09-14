@@ -850,52 +850,26 @@ def _imagenet_is_plant(image: "PILImage.Image") -> tuple[bool, str]:
 
 def _validate_plant_image(image_bytes: bytes) -> tuple[bool, str]:
     """
-    2-step plant/leaf image validator — runs BEFORE the disease model.
-
-    Step 1 — Image quality checks (fast, pixel-level):
-      1. Minimum resolution
-      2. Brightness (too dark / overexposed)
-      3. Blur (edge variance)
-
-    Step 2 — Semantic content check (MobileNetV3 ImageNet):
-      4. Reject if image is a person, animal, vehicle, or object
-      5. Require plant/leaf signal in top-5 predictions
-
-    Returns (is_valid, rejection_reason)
+    Light image sanity check — only rejects obviously invalid inputs.
+    Intentionally permissive: real leaf images must never be blocked.
     """
     try:
-        from PIL import ImageFilter
-        import numpy as np
-
         img = PILImage.open(io.BytesIO(image_bytes)).convert("RGB")
         w, h = img.size
 
         # 1. Minimum resolution
-        if w < 64 or h < 64:
-            return False, "Image resolution is too low. Please upload a clear, high-resolution crop leaf photo."
+        if w < 32 or h < 32:
+            return False, "Image resolution is too low. Please upload a clear crop leaf photo."
 
-        # 2. Brightness check
-        small = img.resize((128, 128), PILImage.LANCZOS)
+        # 2. Brightness — only reject pitch-black or pure-white blanks
+        import numpy as np
+        small = img.resize((64, 64), PILImage.LANCZOS)
         gray_arr = np.array(small.convert("L"), dtype=np.float32)
         mean_brightness = float(gray_arr.mean())
-        if mean_brightness < 20:
-            return False, "Image is too dark. Please take the photo in good lighting conditions."
-        if mean_brightness > 250:
-            return False, "Image is overexposed. Please avoid direct flash or bright sunlight on the leaf."
-
-        # 3. Blur check
-        lap = np.array(small.convert("L").filter(ImageFilter.FIND_EDGES), dtype=np.float32)
-        if float(np.var(lap)) < 10:
-            return False, "Image is too blurry. Please hold the camera steady and ensure the leaf is in focus."
-
-        # 4 & 5. Semantic plant/leaf check via MobileNetV3
-        is_plant, top_label = _imagenet_is_plant(img)
-        if not is_plant:
-            return False, (
-                f"This image appears to contain '{top_label}', not a crop leaf. "
-                "Please upload a clear, close-up photo of a plant leaf or foliage. "
-                "Images of people, animals, or objects are not supported."
-            )
+        if mean_brightness < 8:
+            return False, "Image is too dark. Please take the photo in good lighting."
+        if mean_brightness > 253:
+            return False, "Image appears blank or overexposed. Please upload a real leaf photo."
 
         return True, ""
 
@@ -965,6 +939,17 @@ async def predict_disease(file: UploadFile = File(...), authorization: str = Hea
     db = get_db()
     payload = _get_current_user(authorization)
     if db is not None and payload:
+        # Store a small thumbnail (max 120x120) as base64 to keep DB size low
+        thumb_data_url = ""
+        try:
+            from PIL import Image as _PILImg
+            _img = _PILImg.open(io.BytesIO(contents)).convert("RGB")
+            _img.thumbnail((120, 120), _PILImg.LANCZOS)
+            _buf = io.BytesIO()
+            _img.save(_buf, format="JPEG", quality=70)
+            thumb_data_url = "data:image/jpeg;base64," + base64.b64encode(_buf.getvalue()).decode()
+        except Exception:
+            pass
         db.diagnosis_history.insert_one({
             "userId": payload["sub"],
             "date": datetime.now(timezone.utc).isoformat(),
@@ -973,7 +958,7 @@ async def predict_disease(file: UploadFile = File(...), authorization: str = Hea
             "confidence": d["confidence"],
             "severity": d["severity"],
             "status": "active",
-            "imageUrl": "",  # don't store base64 in history
+            "imageUrl": thumb_data_url,
             "recommendations": recs,
         })
 

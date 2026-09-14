@@ -166,14 +166,17 @@ export default function DiagnosisHistoryPage() {
                             alt={item.diagnosis}
                             className="h-12 w-12 rounded-lg object-cover border border-stone-200"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
+                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                              (e.currentTarget.nextElementSibling as HTMLElement)!.style.display = "flex";
                             }}
                           />
-                        ) : (
-                          <div className="h-12 w-12 rounded-lg border border-stone-200 bg-stone-100 flex items-center justify-center">
-                            <span className="text-xs text-stone-400">N/A</span>
-                          </div>
-                        )}
+                        ) : null}
+                        <div
+                          className="h-12 w-12 rounded-lg border border-stone-200 bg-stone-100 items-center justify-center"
+                          style={{ display: item.imageUrl ? "none" : "flex" }}
+                        >
+                          <ScanLine className="h-5 w-5 text-stone-400" />
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-semibold text-stone-900">{item.crop}</div>
