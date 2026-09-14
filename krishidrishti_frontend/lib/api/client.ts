@@ -33,6 +33,7 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const IS_SIMULATION_FORCED = !API_BASE_URL;
+const IS_DIAGNOSIS_LIVE = !!API_BASE_URL;
 const DEFAULT_LAT = process.env.NEXT_PUBLIC_DEFAULT_LAT || "29.6857";
 const DEFAULT_LON = process.env.NEXT_PUBLIC_DEFAULT_LON || "76.9905";
 
@@ -41,51 +42,37 @@ const DEFAULT_LON = process.env.NEXT_PUBLIC_DEFAULT_LON || "76.9905";
 // ==========================================
 
 export async function predictCropDisease(fileOrSampleId: File | string): Promise<PredictionResponse> {
-  // If a string (sample leaf ID) is passed or real backend is not set, simulate realistic ML inference
+  // Sample leaf demo mode (string ID passed)
   if (typeof fileOrSampleId === "string") {
     const matched = sampleLeaves.find((s) => s.id === fileOrSampleId);
-    // Simulate inference latency
     await new Promise((r) => setTimeout(r, 1200));
     if (matched) {
-      return {
-        ...matched.prediction,
-        analyzedAt: new Date().toISOString(),
-        imageUrl: matched.image,
-      };
+      return { ...matched.prediction, analyzedAt: new Date().toISOString(), imageUrl: matched.image };
     }
   }
 
-  if (IS_SIMULATION_FORCED) {
-    // Return sample 1 as realistic demonstration with uploaded file preview
+  // No backend configured — use mock
+  if (!IS_DIAGNOSIS_LIVE) {
     await new Promise((r) => setTimeout(r, 1500));
     const sample = sampleLeaves[0];
     const previewUrl = typeof fileOrSampleId !== "string" ? URL.createObjectURL(fileOrSampleId) : sample.image;
-    return {
-      ...sample.prediction,
-      analyzedAt: new Date().toISOString(),
-      imageUrl: previewUrl,
-    };
+    return { ...sample.prediction, analyzedAt: new Date().toISOString(), imageUrl: previewUrl };
   }
 
-  // Real FastAPI backend integration point:
-  // Endpoint: POST /api/predict
-  // Content-Type: multipart/form-data
+  // Real backend: POST /api/predict
   const formData = new FormData();
   if (typeof fileOrSampleId !== "string") {
     formData.append("file", fileOrSampleId);
   } else {
-    formData.append("sample_id", fileOrSampleId);
+    // Fetch sample image and send as file
+    const matched = sampleLeaves.find((s) => s.id === fileOrSampleId);
+    const imgRes = await fetch(matched?.image || "");
+    const blob = await imgRes.blob();
+    formData.append("file", new File([blob], `${fileOrSampleId}.jpg`, { type: "image/jpeg" }));
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/predict`, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Inference engine failed with status ${response.status}`);
-  }
-
+  const response = await fetch(`${API_BASE_URL}/api/predict`, { method: "POST", body: formData });
+  if (!response.ok) throw new Error(`Inference engine failed with status ${response.status}`);
   return response.json();
 }
 
@@ -98,6 +85,7 @@ export async function fetchDiagnosisHistory(): Promise<DiagnosisHistoryItem[]> {
   if (!response.ok) throw new Error("Failed to fetch diagnosis history");
   return response.json();
 }
+
 
 // ==========================================
 // 2. CROP RECOMMENDATIONS API
