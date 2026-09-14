@@ -1,12 +1,12 @@
 fastapi==0.115.0
 python-dotenv==1.0.1
 uvicorn[standard]==0.30.6
-scikit-learn==1.5.2
+scikit-learn>=1.5.2
 joblib==1.4.2
 requests==2.32.3
 python-multipart==0.0.12
 pandas>=2.2.3
 torch==2.9.1+cpu
 torchvision==0.24.1+cpu
-Pillow==10.0.0
+Pillow>=10.4.0
 --extra-index-url https://download.pytorch.org/whl/cpu
