@@ -156,7 +156,7 @@ Typical results: Accuracy ~99 %, Macro-F1 ~0.99 on 20 % held-out test split.
 
 **Core model pipeline:**
 ```
-Leaf image → Validation (MobileNetV3 guard) → EfficientNet-B0 inference
+Leaf image → Validation (MobileNetV3 guard) → EfficientNet-B0 inference (TTA × 5)
 → Post-model safety check → Groq LLM recommendations → JSON response
 ```
 

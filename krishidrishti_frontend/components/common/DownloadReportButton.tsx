@@ -133,3 +133,86 @@ function bulletList(doc: jsPDF, items: string[], startY: number, color: [number,
   });
   return y + 2;
 }
+
+export function DownloadReportButton({
+  reportTitle,
+  getData,
+  filename = "report.pdf",
+  variant = "outline",
+}: DownloadReportButtonProps) {
+  const [loading, setLoading] = useState(false);
+
+  const handleDownload = async () => {
+    setLoading(true);
+    try {
+      const data = getData();
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const generatedAt = new Date().toLocaleString();
+      const logo = await getLogo();
+
+      drawHeader(doc, reportTitle, generatedAt, logo);
+
+      let y = 50;
+
+      // Render each top-level key as a section
+      for (const [key, value] of Object.entries(data)) {
+        if (y > 250) { doc.addPage(); drawHeader(doc, reportTitle, generatedAt, logo); y = 50; }
+
+        const label = key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+        if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object") {
+          y = sectionTitle(doc, label, y);
+          const cols = Object.keys(value[0] as object);
+          autoTable(doc, {
+            startY: y,
+            head: [cols.map((c) => c.replace(/_/g, " ").replace(/\b\w/g, (x) => x.toUpperCase()))],
+            body: (value as Record<string, unknown>[]).map((row) => cols.map((c) => String(row[c] ?? ""))),
+            styles: { fontSize: 8, cellPadding: 2 },
+            headStyles: { fillColor: E as unknown as [number, number, number] },
+            margin: { left: 14, right: 14 },
+          });
+          y = (doc as any).lastAutoTable.finalY + 6;
+        } else if (Array.isArray(value)) {
+          y = sectionTitle(doc, label, y);
+          y = bulletList(doc, value.map(String), y);
+        } else if (typeof value === "object" && value !== null) {
+          y = sectionTitle(doc, label, y);
+          const items = Object.entries(value as Record<string, unknown>).map(([k, v]) => ({
+            label: k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+            value: String(v),
+          }));
+          y = infoGrid(doc, items, y);
+        } else {
+          y = sectionTitle(doc, label, y);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          doc.setTextColor(...DARK);
+          const lines = doc.splitTextToSize(String(value), doc.internal.pageSize.getWidth() - 28);
+          doc.text(lines, 14, y);
+          y += lines.length * 5 + 4;
+        }
+      }
+
+      drawFooter(doc);
+      doc.save(filename);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const base =
+    "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500";
+  const styles =
+    variant === "solid"
+      ? `${base} bg-emerald-600 text-white hover:bg-emerald-700`
+      : `${base} border border-emerald-600 text-emerald-700 hover:bg-emerald-50`;
+
+  return (
+    <button onClick={handleDownload} disabled={loading} className={styles}>
+      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+      {loading ? "Generating..." : "Download Report"}
+    </button>
+  );
+}

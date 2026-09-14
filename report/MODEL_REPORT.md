@@ -107,9 +107,9 @@ on the validation split, matching the baseline with a lighter architecture.
    guard rather than a silent wrong prediction.
 3. **Single-leaf assumption** – The model expects a single, reasonably centred
    leaf. Multi-leaf or whole-plant images may reduce confidence.
-4. **No explicit data augmentation for field conditions** – Adding
-   PlantDoc-style augmentation (blur, noise, random crops) during training
-   would improve field generalisation.
+4. **Training augmentation** – Training used standard augmentation (flip, rotation, colour jitter).
+   Test-Time Augmentation (TTA) is applied at inference (5 views averaged) to improve
+   field-condition robustness without retraining.
 
 ---
 
