@@ -850,25 +850,21 @@ def _check_post_model_safety(predicted_class: str, confidence: float, top5: list
     if not dominant_other:
         return None  # model is confident and consistent — pass through
 
-    # dominant_other but NOT low_confidence: confident but cross-crop (e.g. grape → corn)
-    if dominant_other and not low_confidence:
-        actual_crops = list(dict.fromkeys(top5_crops))
-        reason = (
-            f"The model predicted '{predicted_class.replace('___', ' — ')}' with {round(confidence*100)}% confidence, "
-            f"but the top predictions span multiple crops ({', '.join(actual_crops[:3])}), "
-            f"suggesting the uploaded leaf may belong to a crop not fully supported by the current model."
-        )
-        from collections import Counter
-        detected_crop = Counter(top5_crops).most_common(1)[0][0].capitalize()
-        return {
-            "unsupported": True,
-            "detectedCrop": detected_crop,
-            "unsupportedReason": reason,
-            "classProbabilities": top5,
-        }
-
-    # low_confidence only: return None so the best-guess result is shown with its real confidence
-    return None
+    # dominant_other: confident but cross-crop (e.g. grape → corn)
+    actual_crops = list(dict.fromkeys(top5_crops))
+    reason = (
+        f"The model predicted '{predicted_class.replace('___', ' - ')}' with {round(confidence*100)}% confidence, "
+        f"but the top predictions span multiple crops ({', '.join(actual_crops[:3])}), "
+        f"suggesting the uploaded leaf may belong to a crop not fully supported by the current model."
+    )
+    from collections import Counter
+    detected_crop = Counter(top5_crops).most_common(1)[0][0].capitalize()
+    return {
+        "unsupported": True,
+        "detectedCrop": detected_crop,
+        "unsupportedReason": reason,
+        "classProbabilities": top5,
+    }
 
 
 _VALIDATOR_MODEL = None
