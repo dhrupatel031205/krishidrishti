@@ -957,44 +957,55 @@ def _imagenet_is_plant(image: "PILImage.Image") -> tuple[bool, str]:
 
 def _plantnet_is_plant(image_bytes: bytes, filename: str = "leaf.jpg") -> tuple[bool, str]:
     """
-    Calls Pl@ntNet Identify API to check if the image contains a plant.
+    Calls PlantNet Identify API to check if the image contains a plant.
     Returns (is_plant, rejection_reason).
     Fails open (returns True) if API key is missing or call fails.
     """
     api_key = os.getenv("PLANTNET_API_KEY", "")
+    print(f"[PLANTNET] API key present: {bool(api_key)}, starts_with_your: {api_key.startswith('your_')}")
     if not api_key or api_key.startswith("your_"):
+        print("[PLANTNET] No valid key — skipping validation (fail open)")
         return True, ""  # no key configured — fail open
 
     try:
-        # Pl@ntNet expects multipart/form-data with the image file
         files = [("images", (filename, image_bytes, "image/jpeg"))]
         params = {
             "api-key": api_key,
             "include-related-images": "false",
-            "no-reject": "false",   # let Pl@ntNet return a "no-plant" signal
+            "no-reject": "false",
             "lang": "en",
-            "type": "kt",           # kt = all organs (leaf, flower, fruit, bark)
+            "type": "kt",
         }
+        print(f"[PLANTNET] Calling API with image size={len(image_bytes)} bytes, filename={filename}")
         r = requests.post(
             "https://my-api.plantnet.org/v2/identify/all",
             files=files,
             params=params,
             timeout=12,
         )
+        print(f"[PLANTNET] Response status={r.status_code}, body_preview={r.text[:300]}")
 
-        # 404 from Pl@ntNet means it could not identify any plant
         if r.status_code == 404:
             return False, (
                 "PlantNet could not identify any plant in this image. "
                 "Please upload a clear, close-up photo of a crop leaf."
             )
 
+        if r.status_code == 401:
+            print("[PLANTNET] 401 Unauthorized — API key rejected. Failing open.")
+            return True, ""
+
+        if r.status_code == 429:
+            print("[PLANTNET] 429 Rate limit exceeded. Failing open.")
+            return True, ""
+
         if not r.ok:
-            print(f"[WARN] PlantNet API error {r.status_code}: {r.text[:200]}")
-            return True, ""  # fail open on unexpected API error
+            print(f"[PLANTNET] Unexpected error {r.status_code} — failing open")
+            return True, ""
 
         data = r.json()
         results = data.get("results", [])
+        print(f"[PLANTNET] Results count={len(results)}")
 
         if not results:
             return False, (
@@ -1002,17 +1013,14 @@ def _plantnet_is_plant(image_bytes: bytes, filename: str = "leaf.jpg") -> tuple[
                 "Please upload a clear, close-up photo of a crop leaf."
             )
 
-        # Pl@ntNet returned at least one plant match — it's a plant
         best = results[0]
         score = round(best.get("score", 0) * 100, 1)
-        species = best.get("species", {}).get("scientificNameWithoutAuthor", "unknown plant")
-        common = best.get("species", {}).get("commonNames", [])
-        common_name = common[0] if common else species
-        print(f"[INFO] Pl@ntNet identified: {species} ({common_name}) score={score}%")
+        species = best.get("species", {}).get("scientificNameWithoutAuthor", "unknown")
+        print(f"[PLANTNET] Best match: {species} score={score}%")
         return True, ""
 
     except Exception as e:
-        print(f"[WARN] Pl@ntNet validation error: {e}")
+        print(f"[PLANTNET] Exception: {e}")
         return True, ""  # fail open on any exception
 
 
