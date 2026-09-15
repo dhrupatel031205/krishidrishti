@@ -154,10 +154,80 @@ Typical results: Accuracy ~99 %, Macro-F1 ~0.99 on 20 % held-out test split.
               (auth, history, sessions)
 ```
 
-**Core model pipeline:**
+**Core disease detection pipeline:**
 ```
-Leaf image → Validation (MobileNetV3 guard) → EfficientNet-B0 inference (TTA × 5)
-→ Post-model safety check → Groq LLM recommendations → JSON response
+Leaf image upload
+  → [1] Content-type guard (image/* only)
+  → [2] Pl@ntNet API validation (HTTP 404 = not a plant → reject with banner)
+  → [3] EfficientNet-B0 inference with TTA × 5 (5 augmented views averaged)
+  → [4] Post-model safety check (cross-crop top-5 mismatch → "Unsupported" error)
+  → [5] Groq LLM recommendations (falls back to curated KB if no API key)
+  → [6] Result saved to MongoDB (if user authenticated)
+  → JSON response to frontend
+```
+
+**Module A – Crop Recommendation pipeline:**
+```
+Soil inputs (N, P, K, pH, temp, humidity, rainfall)
+  → RandomForest model (crop_model.pkl)
+  → Top-3 crops with confidence scores
+  → Saved to MongoDB recommendations collection (if authenticated)
+```
+
+**Module B – Smart Irrigation pipeline:**
+```
+Sensor feed (latest soil moisture) + Open-Meteo rain forecast
+  → Rule engine: moisture vs growth-stage threshold
+  → If moisture < threshold AND rain < 5mm → irrigate
+  → If moisture < threshold AND rain ≥ 5mm → delay
+  → If moisture ≥ threshold → no action
+```
+
+**Module C – Weather Intelligence pipeline:**
+```
+GPS coordinates (browser geolocation or default Karnal)
+  → Open-Meteo API (free, no key) → temperature, humidity, 24h precipitation
+  → Rule engine → disease risk score + agro-advisories
+  → Auto-refreshes every 5 minutes on frontend
+```
+
+**Module D – Sustainability Score pipeline:**
+```
+Sensor feed (soil moisture as crop_health proxy) + fixed farm inputs
+  → Formula: score = 100 × (0.4 × water_eff + 0.3 × fert_eff + 0.3 × crop_health)
+  → Band: High ≥75, Medium ≥50, Low <50
+  → Improvement suggestions if any component < 0.8
+```
+
+**Module E – Farmer Assistant pipeline:**
+```
+User message + language code + conversation history (last 10 turns)
+  → Groq LLM (Llama-3.3-70B) with system prompt in selected language
+  → Falls back to keyword-matched KB (blight/irrigation/fertilizer/weather/soil)
+  → Supports: en, hi, gu, pa, te
+  → Chat sessions saved to MongoDB (if authenticated)
+```
+
+**Module F – IoT Sensor Feed pipeline:**
+```
+Stateful simulator (server-side _sensor_state dict)
+  → Day/night sinusoidal cycle for temperature & humidity
+  → Soil moisture drifts down 0.2–0.8% per reading; refills at 20%
+  → pH drifts ±0.02 per reading within [5.5, 7.5]
+  → Returns n readings (10-min intervals); auto-refreshes every 30s on frontend
+```
+
+**Module G – Agentic Advisor pipeline:**
+```
+On each request (auto-refresh every 60s):
+  → Fetch live sensor reading (soil moisture, temp, humidity)
+  → Fetch live weather from Open-Meteo (rain_24h, temp override)
+  → Rule 1: humidity ≥75% + temp 18–32°C → fungal risk briefing
+  → Rule 2: moisture < 50% + rain forecast → irrigate / delay briefing
+  → Rule 3: temp ≥36°C → heat stress briefing
+  → Rule 4: rain ≥5mm + moisture ≥40% → sowing window briefing
+  → Sort by priority (critical > high > medium > low)
+  → Return ranked briefings + hero banner from top briefing
 ```
 
 **Known limitations:**
@@ -167,6 +237,8 @@ Leaf image → Validation (MobileNetV3 guard) → EfficientNet-B0 inference (TTA
   "Uncertain" response rather than a silent wrong prediction.
 - Groq LLM requires an API key; system falls back to a curated knowledge
   base when the key is absent.
+- PlantNet validation requires `PLANTNET_API_KEY` env var; fails open
+  (allows prediction) if key is missing or API is unreachable.
 
 ---
 
