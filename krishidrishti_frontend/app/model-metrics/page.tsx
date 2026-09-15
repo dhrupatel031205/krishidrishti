@@ -6,7 +6,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, BarChart, Bar, Cell,
 } from "recharts";
-import { Brain, TrendingUp, BarChart2, Grid3x3, Info } from "lucide-react";
+import { Brain, TrendingUp, BarChart2, Grid3x3, Info, FileDown } from "lucide-react";
 import { useLanguage } from "@/lib/context/LanguageContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -160,19 +160,29 @@ export default function ModelMetricsPage() {
     <AppShell>
       <div className="space-y-6">
         {/* Header */}
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
-              <Brain className="h-6 w-6 text-emerald-700" />
-              {t("modelMetricsTitle")}
-            </h1>
-            <span className="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
-              EfficientNet-B3
-            </span>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
+                <Brain className="h-6 w-6 text-emerald-700" />
+                {t("modelMetricsTitle")}
+              </h1>
+              <span className="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                EfficientNet-B3
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-stone-500">
+              {t("modelMetricsDesc")}
+            </p>
           </div>
-          <p className="mt-1 text-sm text-stone-500">
-            {t("modelMetricsDesc")}
-          </p>
+          <a
+            href="/KrishiDrishti_Model_Report.pdf"
+            download="KrishiDrishti_Model_Report.pdf"
+            className="flex items-center gap-2 shrink-0 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 transition-colors"
+          >
+            <FileDown className="h-4 w-4" />
+            Model Report
+          </a>
         </div>
 
         {/* Summary Cards */}
