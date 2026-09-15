@@ -328,7 +328,7 @@ class LoginInput(BaseModel):
     password: str
 
 
-@app.post("/api/auth/register", tags=["Auth"])
+@app.post("/api/auth/register", tags=["Auth"], openapi_extra={"requestBody": {"content": {"application/json": {"example": {"name": "Ramesh Patel", "email": "ramesh@example.com", "password": "farm1234", "phone": "9876543210", "farmName": "Patel Agro Farm", "location": "Ahmedabad, Gujarat"}}}}})
 def register(data: RegisterInput):
     db = get_db()
     if db is None:
@@ -351,7 +351,7 @@ def register(data: RegisterInput):
     return {"token": token, "user": {"id": user_id, "name": data.name, "email": data.email, "phone": data.phone, "farmName": data.farmName, "location": data.location}}
 
 
-@app.post("/api/auth/login", tags=["Auth"])
+@app.post("/api/auth/login", tags=["Auth"], openapi_extra={"requestBody": {"content": {"application/json": {"example": {"email": "ramesh@example.com", "password": "farm1234"}}}}})
 def login(data: LoginInput):
     db = get_db()
     if db is None:
@@ -1403,7 +1403,7 @@ class SoilInput(BaseModel):
     rainfall: float
 
 
-@app.post("/recommend-crop", tags=["A - Crop Recommendation"])
+@app.post("/recommend-crop", tags=["A - Crop Recommendation"], openapi_extra={"requestBody": {"content": {"application/json": {"examples": {"Rice (high humidity)": {"summary": "Rice — high humidity, high rainfall", "value": {"N": 90, "P": 42, "K": 43, "temperature": 20.8, "humidity": 82.0, "ph": 6.5, "rainfall": 202.9}}, "Chickpea (dry)": {"summary": "Chickpea — low water, dry soil", "value": {"N": 20, "P": 50, "K": 20, "temperature": 18.0, "humidity": 65.0, "ph": 7.0, "rainfall": 80.0}}, "Maize": {"summary": "Maize — moderate conditions", "value": {"N": 60, "P": 55, "K": 44, "temperature": 22.0, "humidity": 70.0, "ph": 6.2, "rainfall": 120.0}}}}}}}})
 def recommend_crop(data: SoilInput, authorization: str = Header(default="", alias="Authorization")):
     """## Module A – Crop Recommendation
     Recommends the best crop based on soil and climate parameters.
@@ -1464,7 +1464,7 @@ class IrrigationInput(BaseModel):
     temperature: float = 28
 
 
-@app.post("/irrigation", tags=["B - Smart Irrigation"])
+@app.post("/irrigation", tags=["B - Smart Irrigation"], openapi_extra={"requestBody": {"content": {"application/json": {"examples": {"Irrigate now": {"summary": "Irrigate now — dry soil, no rain", "value": {"soil_moisture": 32, "growth_stage": "vegetative", "rain_forecast_mm": 0, "temperature": 30}}, "Delay — rain coming": {"summary": "Delay — rain forecast", "value": {"soil_moisture": 38, "growth_stage": "flowering", "rain_forecast_mm": 12, "temperature": 28}}, "No action needed": {"summary": "No irrigation — soil is moist", "value": {"soil_moisture": 65, "growth_stage": "seedling", "rain_forecast_mm": 0, "temperature": 25}}}}}}}})
 def irrigation(data: IrrigationInput):
     """## Module B – Smart Irrigation
     Decides whether to irrigate based on soil moisture, growth stage, and rain forecast.
@@ -1564,7 +1564,7 @@ class SustainabilityInput(BaseModel):
     crop_health: float
 
 
-@app.post("/sustainability-score", tags=["D - Sustainability Score"])
+@app.post("/sustainability-score", tags=["D - Sustainability Score"], openapi_extra={"requestBody": {"content": {"application/json": {"examples": {"Efficient farm (High score)": {"summary": "Efficient farm — score ~95", "value": {"water_used_liters": 1400, "water_optimal_liters": 1400, "fertilizer_used_kg": 45, "fertilizer_recommended_kg": 45, "crop_health": 0.95}}, "Inefficient farm (Low score)": {"summary": "Inefficient farm — score ~42", "value": {"water_used_liters": 3000, "water_optimal_liters": 1400, "fertilizer_used_kg": 90, "fertilizer_recommended_kg": 45, "crop_health": 0.60}}, "Average farm": {"summary": "Average farm — score ~68", "value": {"water_used_liters": 1800, "water_optimal_liters": 1400, "fertilizer_used_kg": 55, "fertilizer_recommended_kg": 45, "crop_health": 0.80}}}}}}}})
 def sustainability_score(d: SustainabilityInput):
     """## Module D – Sustainability Score
     Computes a 0–100 sustainability score using the formula:
@@ -1701,7 +1701,7 @@ def _llm_reply(message: str, lang: str, history: list = []) -> Optional[str]:
         return None
 
 
-@app.post("/assistant", tags=["E - Farmer Assistant"])
+@app.post("/assistant", tags=["E - Farmer Assistant"], openapi_extra={"requestBody": {"content": {"application/json": {"examples": {"English — disease query": {"summary": "English: tomato disease question", "value": {"message": "My tomato leaves have brown spots with yellow rings. What should I do?", "language": "en"}}, "Hindi query": {"summary": "Hindi: pest problem", "value": {"message": "\u092e\u0947\u0930\u0940 \u092b\u0938\u0932 \u092e\u0947\u0902 \u0915\u0940\u0921\u093c\u0947 \u0932\u0917 \u0917\u090f \u0939\u0948\u0902, \u0915\u094d\u092f\u093e \u0915\u0930\u0942\u0902?", "language": "hi"}}, "Gujarati query": {"summary": "Gujarati: leaf spots", "value": {"message": "\u0aae\u0abe\u0ab0\u0abe \u0a9f\u0abe\u0aae\u0ac7\u0a9f\u0abe\u0aa8\u0abe \u0aaa\u0abe\u0aa8 \u0aaa\u0ab0 \u0aa1\u0abe\u0a98 \u0a9b\u0ac7, \u0ab6\u0ac1\u0a82 \u0a95\u0ab0\u0ab5\u0ac1\u0a82?", "language": "gu"}}, "Disease context": {"summary": "Pass disease name directly", "value": {"disease": "Tomato Early Blight", "language": "en"}}}}}}}})
 def assistant(d: AssistantInput):
     """## Module E – Farmer Assistant (GenAI)
     Conversational AI assistant powered by Groq LLM (Llama-3.3-70B) with Hindi/Gujarati support.
@@ -1712,11 +1712,11 @@ def assistant(d: AssistantInput):
     ```
     **Example – Hindi query:**
     ```json
-    { "message": "मेरी फसल में कीड़े लग गए हैं, क्या करूं?", "language": "hi" }
+    { "message": "\u092e\u0947\u0930\u0940 \u092b\u0938\u0932 \u092e\u0947\u0902 \u0915\u0940\u0921\u093c\u0947 \u0932\u0917 \u0917\u090f \u0939\u0948\u0902, \u0915\u094d\u092f\u093e \u0915\u0930\u0942\u0902?", "language": "hi" }
     ```
     **Example – Gujarati query:**
     ```json
-    { "message": "મારા ટામેટાના પાન પર ડાઘ છે, શું કરવું?", "language": "gu" }
+    { "message": "\u0aae\u0abe\u0ab0\u0abe \u0a9f\u0abe\u0aae\u0ac7\u0a9f\u0abe\u0aa8\u0abe \u0aaa\u0abe\u0aa8 \u0aaa\u0ab0 \u0aa1\u0abe\u0a98 \u0a9b\u0ac7, \u0ab6\u0ac1\u0a82 \u0a95\u0ab0\u0ab5\u0ac1\u0a82?", "language": "gu" }
     ```
     **Example – Disease context:**
     ```json
