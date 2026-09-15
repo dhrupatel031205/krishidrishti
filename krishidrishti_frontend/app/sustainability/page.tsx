@@ -169,7 +169,7 @@ export default function SustainabilityPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
                 <Leaf className="h-6 w-6 text-emerald-700" />
-                Farm Sustainability & ESG Indices
+                {t("sustainabilityTitle")}
               </h1>
               <SimulationBadge />
             </div>
@@ -202,10 +202,14 @@ export default function SustainabilityPage() {
           <div className="rounded-2xl border border-stone-200/80 bg-white p-6 shadow-xs">
             <h2 className="font-semibold text-stone-900 text-sm mb-4 flex items-center gap-2">
               <FlaskConical className="h-4 w-4 text-emerald-700" />
-              Resource Usage Inputs
+              {t("resourceUsageInputs")}
+            </h2>
+            <form onSubmit={calculate} className="space-y-4 text-xs">
+              <div className="space-y-3 pb-3 border-b border-stone-100">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">{t("waterUsed").split(" ")[0]}</p>
                 <div>
                   <label className="block font-medium text-stone-700 mb-1">
-                    Water Used (Liters): <span className="text-sky-700 font-bold">{form.water_used_liters.toLocaleString()}</span>
+                    {t("waterUsed")}: <span className="text-sky-700 font-bold">{form.water_used_liters.toLocaleString()}</span>
                   </label>
                   <input
                     type="range" min="500" max="5000" step="100"
@@ -216,7 +220,7 @@ export default function SustainabilityPage() {
                 </div>
                 <div>
                   <label className="block font-medium text-stone-700 mb-1">
-                    Optimal Water (Liters): <span className="text-sky-700 font-bold">{form.water_optimal_liters.toLocaleString()}</span>
+                    {t("optimalWater")}: <span className="text-sky-700 font-bold">{form.water_optimal_liters.toLocaleString()}</span>
                   </label>
                   <input
                     type="range" min="300" max="4000" step="100"
@@ -228,10 +232,10 @@ export default function SustainabilityPage() {
               </div>
 
               <div className="space-y-3 pb-3 border-b border-stone-100">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">Fertilizer</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">{t("fertilizerUsed").split(" ")[0]}</p>
                 <div>
                   <label className="block font-medium text-stone-700 mb-1">
-                    Fertilizer Used (kg): <span className="text-amber-700 font-bold">{form.fertilizer_used_kg}</span>
+                    {t("fertilizerUsed")}: <span className="text-amber-700 font-bold">{form.fertilizer_used_kg}</span>
                   </label>
                   <input
                     type="range" min="10" max="150" step="1"
@@ -242,7 +246,7 @@ export default function SustainabilityPage() {
                 </div>
                 <div>
                   <label className="block font-medium text-stone-700 mb-1">
-                    Recommended Dose (kg): <span className="text-amber-700 font-bold">{form.fertilizer_recommended_kg}</span>
+                    {t("recommendedDose")}: <span className="text-amber-700 font-bold">{form.fertilizer_recommended_kg}</span>
                   </label>
                   <input
                     type="range" min="10" max="150" step="1"
@@ -303,6 +307,8 @@ export default function SustainabilityPage() {
                       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-800">
                         <Award className="h-4 w-4" />
                         <span>{t("overallEcoRating")}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
                         <span className="text-5xl font-black tracking-tight text-emerald-900">
                           {report.overallScore}
                         </span>
