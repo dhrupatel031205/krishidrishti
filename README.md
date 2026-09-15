@@ -10,18 +10,23 @@
 ### ✅ Core Task
 | Module | Description |
 |---|---|
-| **Crop Disease Detection** | EfficientNet-B0 trained on PlantVillage (38 classes, 54,305 images). Accepts a leaf image → returns disease class + confidence + farmer-friendly recommendations. |
+| **Crop Disease Detection** | EfficientNet-B0 trained on PlantVillage (38 classes, 54,305 images). Accepts a leaf image → PlantNet plant validation → EfficientNet-B0 inference with TTA×5 → post-model safety check → Groq LLM recommendations. |
 
 ### ✅ Bonus Modules
 | Module | Description |
 |---|---|
-| **A – Crop Recommendation** | RandomForest ML model trained on soil NPK, pH, temperature, humidity, rainfall → recommends best crop. |
+| **A – Crop Recommendation** | RandomForest ML model trained on soil NPK, pH, temperature, humidity, rainfall → top-3 crops with confidence scores. |
 | **B – Smart Irrigation** | Rule-based engine using soil moisture, growth stage, rain forecast → irrigate / delay decision. |
 | **C – Weather Intelligence** | Live weather via Open-Meteo (keyless) → disease risk alerts, irrigation delay advisories. |
 | **D – Sustainability Score** | Formula-based score (water efficiency × 0.4 + fertiliser efficiency × 0.3 + crop health × 0.3) with improvement suggestions. |
-| **E – Farmer Assistant (GenAI)** | Groq LLM (Llama-3.3-70B) conversational assistant with Hindi/Gujarati support and KB fallback. |
+| **E – Farmer Assistant (GenAI)** | Groq LLM (Llama-3.3-70B) conversational assistant with Hindi/Gujarati/Punjabi/Telugu support and KB fallback. Full conversation history (last 10 turns). |
 | **F – IoT Integration** | Simulated sensor stream (soil moisture, temperature, humidity, pH) with day/night cycle and irrigation refill logic. |
-| **G – Agentic Advisor** | Autonomous advisory dashboard combining disease, weather, irrigation, and sensor data into unified farm recommendations. |
+| **G – Agentic Advisor** | Autonomous advisory dashboard combining disease, weather, irrigation, and sensor data into ranked farm briefings. |
+
+### ✅ Auth & Persistence
+| Feature | Description |
+|---|---|
+| **Auth** | JWT-based register/login + Clerk integration. Diagnosis history, crop recommendations, chat sessions, and sensor readings persisted to MongoDB per user. |
 
 ---
 
@@ -48,7 +53,7 @@ python train_crop.py --csv crop_recommendation.csv
 
 # Copy and fill in environment variables
 cp .env.example .env
-# Edit .env: set MONGODB_URI, JWT_SECRET, LLM_API_KEY (Groq key)
+# Edit .env: set MONGODB_URI, JWT_SECRET, LLM_API_KEY (Groq key), PLANTNET_API_KEY
 
 # Start the API server
 uvicorn main:app --reload --port 8000
@@ -60,9 +65,9 @@ uvicorn main:app --reload --port 8000
 cd krishidrishti_frontend
 npm install
 
-# Copy and fill in environment variables
-cp .env.local.example .env.local   # or edit .env.local directly
+# Edit .env.local directly (already present)
 # Set NEXT_PUBLIC_API_URL=http://localhost:8000
+# Set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY (from https://dashboard.clerk.com)
 
 npm run dev
 # App: http://localhost:3000
@@ -105,6 +110,7 @@ Corn_(maize)___Northern_Leaf_Blight
 | **PlantVillage** | Core disease detection (train + validation) | [spMohanty/PlantVillage-Dataset](https://github.com/spMohanty/PlantVillage-Dataset) | CC BY 4.0 |
 | **Crop Recommendation Dataset** | Module A – crop recommendation | [Atharva Ingle, Kaggle](https://www.kaggle.com/datasets/atharvaingle/crop-recommendation-dataset) | CC0 Public Domain |
 | **Open-Meteo** | Module C – live weather | [open-meteo.com](https://open-meteo.com) | CC BY 4.0 (free, no key) |
+| **Pl@ntNet API** | Non-leaf image rejection | [my-api.plantnet.org](https://my-api.plantnet.org) | Free tier (500 req/day) |
 
 ---
 
@@ -123,6 +129,7 @@ Corn_(maize)___Northern_Leaf_Blight
 Full confusion matrix and per-class precision/recall are in:
 - `report/MODEL_REPORT.md`
 - `ai model/core.ipynb` (notebook output cells)
+- `GET /api/model/metrics` (live API endpoint)
 
 ### Module A – Crop Recommendation (RandomForest)
 
@@ -134,24 +141,28 @@ Typical results: Accuracy ~99 %, Macro-F1 ~0.99 on 20 % held-out test split.
 ## 5. Architecture Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    KrishiDrishti Platform                    │
-├──────────────────────┬──────────────────────────────────────┤
-│   Frontend (Next.js) │         Backend (FastAPI)            │
-│   ─────────────────  │  ──────────────────────────────────  │
-│   /diagnosis         │  POST /api/predict  (EfficientNet-B0)│
-│   /recommendations   │  POST /recommend-crop  (RandomForest)│
-│   /irrigation        │  POST /irrigation  (rule-based)      │
-│   /weather           │  GET  /weather  (Open-Meteo)         │
-│   /sustainability    │  POST /sustainability-score          │
-│   /assistant         │  POST /assistant  (Groq LLM)         │
-│   /monitoring        │  GET  /sensor-feed  (simulated IoT)  │
-│   /advisor           │  Agentic multi-module aggregation    │
-│   /model-metrics     │  GET  /api/model/metrics             │
-└──────────────────────┴──────────────────────────────────────┘
-         │                            │
-         └──────── MongoDB Atlas ─────┘
-              (auth, history, sessions)
+┌─────────────────────────────────────────────────────────────────────┐
+│                      KrishiDrishti Platform                          │
+├──────────────────────────┬──────────────────────────────────────────┤
+│   Frontend (Next.js 16)  │         Backend (FastAPI)                │
+│   ──────────────────     │  ────────────────────────────────────    │
+│   /dashboard             │  POST /api/predict  (EfficientNet-B0)   │
+│   /diagnosis             │  POST /recommend-crop  (RandomForest)   │
+│   /recommendations       │  POST /irrigation  (rule-based)         │
+│   /irrigation            │  GET  /weather  (Open-Meteo)            │
+│   /weather               │  POST /sustainability-score             │
+│   /sustainability        │  POST /assistant  (Groq LLM)            │
+│   /assistant             │  GET  /sensor-feed  (simulated IoT)     │
+│   /monitoring            │  GET  /api/advisor/briefings            │
+│   /advisor               │  GET  /api/model/metrics                │
+│   /model-metrics         │  POST /api/auth/register                │
+│   /settings              │  POST /api/auth/login                   │
+│   /login  /signup        │  GET|PUT /api/auth/me                   │
+└──────────────────────────┴──────────────────────────────────────────┘
+         │                              │
+         └──────── MongoDB Atlas ───────┘
+    (users, diagnosis_history, recommendations,
+     chat_history, sensor_readings)
 ```
 
 **Core disease detection pipeline:**
@@ -263,6 +274,8 @@ The video demonstrates:
 🔌 **Backend API:** [https://krishidrishti-1-nva8.onrender.com](https://krishidrishti-1-nva8.onrender.com)  
 📖 **API Docs:** [https://krishidrishti-1-nva8.onrender.com/docs](https://krishidrishti-1-nva8.onrender.com/docs)
 
+> **Render cold-start note:** Free-tier backend sleeps after 15 min of inactivity. First request may take 30–60 seconds. Hit `/health` first if needed.
+
 ---
 
 ## Originality Declaration
@@ -272,12 +285,16 @@ This project was built entirely during the hackathon window (10–15 September).
 **Third-party code / libraries referenced:**
 - PyTorch & torchvision (BSD licence) – model training and inference
 - FastAPI (MIT) – REST API framework
-- Next.js (MIT) – frontend framework
+- Next.js 16 (MIT) – frontend framework
+- Clerk (SaaS) – authentication
 - scikit-learn (BSD) – crop recommendation model
 - Open-Meteo API – weather data (no key required)
 - Groq API – LLM inference (Llama-3.3-70B)
+- Pl@ntNet API – plant/leaf image validation
 - PlantVillage dataset (CC BY 4.0) – disease detection training data
 - Crop Recommendation Dataset by Atharva Ingle (CC0) – Module A training
+- MongoDB Atlas – database (free tier)
+- Recharts, Framer Motion, TanStack Query, jsPDF – frontend libraries
 
 No public notebooks or pre-built solutions were copied wholesale.
 AI coding assistants were used for boilerplate; all model training,
@@ -290,25 +307,70 @@ evaluation, and system integration were performed by the team.
 ```
 krishidrishti/
 ├── ai model/
-│   └── core.ipynb              # Training notebook (EfficientNet-B0)
+│   ├── core.ipynb              # Training notebook (EfficientNet-B0)
+│   └── stage1-2.ipynb          # Stage 1-2 experiments
 ├── backend/
 │   ├── models/
 │   │   ├── krishidrishti_efficientnet_b0_final.pth
+│   │   ├── best_agri_model.pth
 │   │   └── crop_model.pkl
-│   ├── main.py                 # FastAPI app (all modules A-F)
+│   ├── main.py                 # FastAPI app (all modules A-G + Auth)
 │   ├── train_crop.py           # Module A training script
+│   ├── start.py                # Render production entry point
+│   ├── start.bat               # Windows dev helper
+│   ├── crop_recommendation.csv
 │   ├── requirements.txt
+│   ├── runtime.txt             # Python 3.11.9
 │   └── .env.example
 ├── krishidrishti_frontend/
 │   ├── app/                    # Next.js App Router pages
+│   │   ├── dashboard/
+│   │   ├── diagnosis/
+│   │   ├── recommendations/
+│   │   ├── irrigation/
+│   │   ├── weather/
+│   │   ├── sustainability/
+│   │   ├── assistant/
+│   │   ├── monitoring/
+│   │   ├── advisor/
+│   │   ├── model-metrics/
+│   │   ├── settings/
+│   │   ├── login/
+│   │   └── signup/
 │   ├── components/
 │   ├── config/features.ts      # Feature flags
+│   ├── lib/api/client.ts       # API client layer (live + mock)
+│   ├── .env.local              # API URL + Clerk keys + default coordinates
 │   └── package.json
 ├── model/
 │   └── predict.py              # ← CLI predict interface (Section 4.1)
 ├── report/
 │   └── MODEL_REPORT.md         # ← One-page model report (Section 7.3)
+├── docs/
+│   ├── EVALUATOR_MANUAL.md     # Judge/evaluator step-by-step guide
+│   ├── USER_MANUAL.md
+│   └── KrishiDrishti_Model_Report.pdf
 ├── render.yaml                 # Render deployment config
 ├── runtime.txt                 # Python 3.11.9
 └── README.md                   # ← This file
 ```
+
+## Environment Variables
+
+### Backend (`backend/.env`)
+| Variable | Purpose | Required |
+|---|---|---|
+| `LLM_API_KEY` | Groq API key (get free at console.groq.com) | No – falls back to KB |
+| `MONGODB_URI` | MongoDB Atlas connection string | No – works without persistence |
+| `JWT_SECRET` | JWT signing secret | Yes if using auth |
+| `PLANTNET_API_KEY` | Pl@ntNet plant validation key | No – fails open |
+| `LLM_MODEL` | Override LLM model (default: `llama-3.3-70b-versatile`) | No |
+
+### Frontend (`krishidrishti_frontend/.env.local`)
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Backend URL (e.g. `http://localhost:8000`) |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+| `CLERK_SECRET_KEY` | Clerk secret key |
+| `NEXT_PUBLIC_DEFAULT_LAT` | Default farm latitude (default: 29.6857 Karnal) |
+| `NEXT_PUBLIC_DEFAULT_LON` | Default farm longitude (default: 76.9905 Karnal) |
