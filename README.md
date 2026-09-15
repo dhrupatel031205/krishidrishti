@@ -255,7 +255,7 @@ On each request (auto-refresh every 60s):
 
 ## 6. Demo Video
 
-📹 **[Watch Demo Video](<INSERT_YOUTUBE_OR_DRIVE_LINK_HERE>)**
+📹 **[Watch Demo Video](https://screenrec.com/share/u7yNjHSrtz)**
 
 The video demonstrates:
 1. Uploading a leaf image → disease detection result with confidence
