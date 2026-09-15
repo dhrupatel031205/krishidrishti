@@ -847,9 +847,21 @@ def _check_post_model_safety(predicted_class: str, confidence: float, top5: list
     other_crops = [c for c in top5_crops if c != predicted_crop]
     dominant_other = len(other_crops) >= 4  # all 4 non-top1 are a different crop
 
-    low_confidence = confidence < 0.10  # only block near-random predictions
+    low_confidence = confidence < 0.65  # reject non-leaf images
 
-    if not (low_confidence and dominant_other):
+    if low_confidence:
+        return {
+            "unsupported": True,
+            "detectedCrop": predicted_crop.capitalize(),
+            "unsupportedReason": (
+                f"The model's confidence is only {round(confidence * 100)}%, which is too low for a reliable diagnosis. "
+                "This usually means the uploaded image is not a crop leaf, or the leaf is not from one of the 38 supported PlantVillage crops. "
+                "Please upload a clear, close-up photo of a single crop leaf."
+            ),
+            "classProbabilities": top5,
+        }
+    if not dominant_other:
+        return None  # model is confident and consistent - pass through
         return None  # model is confident and consistent — pass through
 
     # dominant_other but NOT low_confidence: confident but cross-crop (e.g. grape → corn)
@@ -975,12 +987,20 @@ def _validate_plant_image(image_bytes: bytes) -> tuple[bool, str]:
         # 2. Brightness — only reject pitch-black or pure-white blanks
         import numpy as np
         small = img.resize((64, 64), PILImage.LANCZOS)
-        gray_arr = np.array(small.convert("L"), dtype=np.float32)
+        arr = np.array(small, dtype=np.float32)
+        gray_arr = arr.mean(axis=2)
         mean_brightness = float(gray_arr.mean())
         if mean_brightness < 8:
             return False, "Image is too dark. Please take the photo in good lighting."
         if mean_brightness > 253:
             return False, "Image appears blank or overexposed. Please upload a real leaf photo."
+
+        # 3. Green-channel dominance — real leaf images have significantly more green than red/blue
+        r_mean, g_mean, b_mean = arr[:, :, 0].mean(), arr[:, :, 1].mean(), arr[:, :, 2].mean()
+        green_dominance = g_mean - (r_mean + b_mean) / 2
+        # Leaves typically have green_dominance > 5; logos/objects are near 0 or negative
+        if green_dominance < 3 and mean_brightness > 30:
+            return False, "This image does not appear to be a crop leaf. Please upload a clear, close-up photo of a plant leaf."
 
         return True, ""
 
