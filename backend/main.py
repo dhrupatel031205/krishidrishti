@@ -243,7 +243,30 @@ def _predict_disease_model(image_bytes: bytes):
         print(f"[WARN] Inference error: {e}")
         return None
 
-app = FastAPI(title="AgriSmart AI - Bonus Backend (A-F)", version="1.1.0")
+app = FastAPI(
+    title="KrishiDrishti – AgriSmart AI API",
+    version="1.1.0",
+    description="""
+## KrishiDrishti AgriSmart AI — Full Backend API
+
+Test all modules directly from this page. Click any endpoint → **Try it out** → fill values → **Execute**.
+
+| Module | Endpoint | Method |
+|---|---|---|
+| **Core** – Crop Disease Detection | `/api/predict` | POST (image upload) |
+| **A** – Crop Recommendation | `/recommend-crop` | POST |
+| **B** – Smart Irrigation | `/irrigation` | POST |
+| **C** – Weather Intelligence | `/weather` | GET |
+| **D** – Sustainability Score | `/sustainability-score` | POST |
+| **E** – Farmer Assistant (GenAI) | `/assistant` | POST |
+| **F** – IoT Sensor Feed | `/sensor-feed` | GET |
+| **G** – Agentic Advisor | `/api/advisor/briefings` | GET |
+| **Metrics** – Model Report | `/api/model/metrics` | GET |
+| **Debug** – Model Status | `/debug/model` | GET |
+""",
+    contact={"name": "KrishiDrishti Team", "url": "https://krishidrishtiai.vercel.app"},
+    license_info={"name": "MIT"},
+)
 
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -1026,8 +1049,17 @@ def _plantnet_is_plant(image_bytes: bytes, filename: str = "leaf.jpg") -> tuple[
 
 
 @app.post("/api/predict", tags=["Core - Crop Disease Detection"])
-async def predict_disease(file: UploadFile = File(...), authorization: str = Header(default="", alias="Authorization")):
-    """Accepts a leaf image and returns a structured disease diagnosis."""
+async def predict_disease(file: UploadFile = File(..., description="Leaf/crop image (JPG, PNG, WEBP). Upload a clear close-up of a single leaf."), authorization: str = Header(default="", alias="Authorization")):
+    """## Crop Disease Detection
+    Upload a leaf image and get an AI-powered disease diagnosis.
+
+    **How to test:**
+    1. Click **Try it out**
+    2. Click **Choose File** and upload any crop leaf photo
+    3. Click **Execute**
+
+    **Returns:** crop name, disease class, confidence %, severity, treatment recommendations, top-5 class probabilities.
+    """
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=422, detail="Only image files are accepted.")
 
@@ -1186,7 +1218,13 @@ def _groq_recommendations(crop: str, disease: str, healthy: bool) -> dict:
 
 @app.get("/api/model/metrics", tags=["Core - Crop Disease Detection"])
 def model_metrics():
-    """Returns EfficientNet-B0 training metrics from PlantVillage dataset."""
+    """## Model Metrics – EfficientNet-B0 Training Report
+    Returns full training history, per-class precision/recall/F1, and dataset statistics.
+
+    No inputs required — just click **Execute**.
+
+    **Returns:** macro-F1 (0.9634), accuracy, 10-epoch training history, 38-class metrics.
+    """
     # Training history from the actual notebook run (38 classes, EfficientNet-B0)
     training_history = [
         {"epoch": 1,  "train_loss": 1.8432, "val_loss": 1.2341, "train_f1": 0.4821, "val_f1": 0.6234},
@@ -1293,6 +1331,20 @@ class SoilInput(BaseModel):
 
 @app.post("/recommend-crop", tags=["A - Crop Recommendation"])
 def recommend_crop(data: SoilInput, authorization: str = Header(default="", alias="Authorization")):
+    """## Module A – Crop Recommendation
+    Recommends the best crop based on soil and climate parameters.
+
+    **Example values to try:**
+    ```json
+    { "N": 90, "P": 42, "K": 43, "temperature": 20.8, "humidity": 82.0, "ph": 6.5, "rainfall": 202.9 }
+    ```
+    Expected result: `rice` with ~99% confidence.
+
+    ```json
+    { "N": 20, "P": 50, "K": 20, "temperature": 18.0, "humidity": 65.0, "ph": 7.0, "rainfall": 80.0 }
+    ```
+    Expected result: `chickpea`
+    """
     try:
         bundle = _load_crop()
     except FileNotFoundError as e:
@@ -1340,6 +1392,23 @@ class IrrigationInput(BaseModel):
 
 @app.post("/irrigation", tags=["B - Smart Irrigation"])
 def irrigation(data: IrrigationInput):
+    """## Module B – Smart Irrigation
+    Decides whether to irrigate based on soil moisture, growth stage, and rain forecast.
+
+    **Example 1 – Irrigate now:**
+    ```json
+    { "soil_moisture": 32, "growth_stage": "vegetative", "rain_forecast_mm": 0, "temperature": 30 }
+    ```
+    **Example 2 – Delay (rain coming):**
+    ```json
+    { "soil_moisture": 38, "growth_stage": "flowering", "rain_forecast_mm": 12, "temperature": 28 }
+    ```
+    **Example 3 – No irrigation needed:**
+    ```json
+    { "soil_moisture": 65, "growth_stage": "seedling", "rain_forecast_mm": 0, "temperature": 25 }
+    ```
+    Valid growth stages: `seedling`, `vegetative`, `flowering`, `maturity`
+    """
     stage = data.growth_stage.strip().lower()
     threshold = STAGE_THRESHOLD.get(stage)
     if threshold is None:
@@ -1375,7 +1444,18 @@ def _derive_weather_actions(temp, humidity, rain_24h):
 
 
 @app.get("/weather", tags=["C - Weather Intelligence"])
-def weather(lat: float = Query(...), lon: float = Query(...)):
+def weather(lat: float = Query(..., description="Latitude. Example: 23.0225 (Ahmedabad)", example=23.0225), lon: float = Query(..., description="Longitude. Example: 72.5714 (Ahmedabad)", example=72.5714)):
+    """## Module C – Weather Intelligence
+    Fetches live weather from Open-Meteo (no API key needed) and generates agro-advisories.
+
+    **Example coordinates to try:**
+    - Ahmedabad: `lat=23.0225, lon=72.5714`
+    - Delhi: `lat=28.6139, lon=77.2090`
+    - Mumbai: `lat=19.0760, lon=72.8777`
+    - Karnal (default): `lat=29.6857, lon=76.9905`
+
+    **Returns:** temperature, humidity, 24h rainfall forecast, disease risk actions.
+    """
     url = ("https://api.open-meteo.com/v1/forecast"
            f"?latitude={lat}&longitude={lon}"
            "&current=temperature_2m,relative_humidity_2m,precipitation"
@@ -1412,6 +1492,22 @@ class SustainabilityInput(BaseModel):
 
 @app.post("/sustainability-score", tags=["D - Sustainability Score"])
 def sustainability_score(d: SustainabilityInput):
+    """## Module D – Sustainability Score
+    Computes a 0–100 sustainability score using the formula:
+    `score = 100 * (0.4 * water_efficiency + 0.3 * fertilizer_efficiency + 0.3 * crop_health)`
+
+    **Example – Efficient farm:**
+    ```json
+    { "water_used_liters": 1400, "water_optimal_liters": 1400, "fertilizer_used_kg": 45, "fertilizer_recommended_kg": 45, "crop_health": 0.95 }
+    ```
+    Expected score: ~95 (High band)
+
+    **Example – Inefficient farm:**
+    ```json
+    { "water_used_liters": 3000, "water_optimal_liters": 1400, "fertilizer_used_kg": 90, "fertilizer_recommended_kg": 45, "crop_health": 0.60 }
+    ```
+    Expected score: ~42 (Low band) with improvement suggestions.
+    """
     water_eff = _clamp01(d.water_optimal_liters / d.water_used_liters) if d.water_used_liters else 0
     fert_eff = _clamp01(d.fertilizer_recommended_kg / d.fertilizer_used_kg) if d.fertilizer_used_kg else 0
     health = _clamp01(d.crop_health)
@@ -1533,6 +1629,27 @@ def _llm_reply(message: str, lang: str, history: list = []) -> Optional[str]:
 
 @app.post("/assistant", tags=["E - Farmer Assistant"])
 def assistant(d: AssistantInput):
+    """## Module E – Farmer Assistant (GenAI)
+    Conversational AI assistant powered by Groq LLM (Llama-3.3-70B) with Hindi/Gujarati support.
+
+    **Example – English disease query:**
+    ```json
+    { "message": "My tomato leaves have brown spots with yellow rings. What should I do?", "language": "en" }
+    ```
+    **Example – Hindi query:**
+    ```json
+    { "message": "मेरी फसल में कीड़े लग गए हैं, क्या करूं?", "language": "hi" }
+    ```
+    **Example – Gujarati query:**
+    ```json
+    { "message": "મારા ટામેટાના પાન પર ડાઘ છે, શું કરવું?", "language": "gu" }
+    ```
+    **Example – Disease context:**
+    ```json
+    { "disease": "Tomato Early Blight", "language": "en" }
+    ```
+    Supported languages: `en`, `hi`, `gu`, `pa`, `te`
+    """
     lang = d.language if d.language in LANG_NAME else "en"
     message = d.message or d.irrigation_action or ""
     if d.disease:
@@ -1590,8 +1707,18 @@ def _reading_at(dt: datetime, state: dict) -> dict:
 
 
 @app.get("/sensor-feed", tags=["F - IoT (simulated)"])
-def sensor_feed(n: int = Query(1, ge=1, le=50), authorization: str = Header(default="", alias="Authorization")):
-    """Returns the last n readings, 10 min apart, ending now (a live stream)."""
+def sensor_feed(n: int = Query(1, ge=1, le=50, description="Number of readings to return (1–50). Each reading is 10 minutes apart."), authorization: str = Header(default="", alias="Authorization")):
+    """## Module F – IoT Sensor Feed (Simulated)
+    Returns simulated sensor readings with realistic day/night cycle drift.
+
+    **Try these values:**
+    - `n=1` — latest single reading
+    - `n=6` — last 1 hour of readings
+    - `n=24` — last 4 hours of readings
+    - `n=50` — last ~8 hours (maximum)
+
+    **Returns per reading:** soil_moisture (%), temperature (°C), humidity (%), pH, needs_irrigation flag.
+    """
     now = datetime.now(timezone.utc)
     readings = [_reading_at(now - timedelta(minutes=10 * (n - 1 - i)), _sensor_state)
                 for i in range(n)]
@@ -1614,8 +1741,19 @@ def sensor_feed(n: int = Query(1, ge=1, le=50), authorization: str = Header(defa
 # =====================================================================
 
 @app.get("/api/advisor/briefings", tags=["G - Agentic Advisor"])
-def advisor_briefings(lat: float = Query(29.6857), lon: float = Query(76.9905)):
-    """Aggregates live sensor, weather, and diagnosis signals into ranked advisory briefings."""
+def advisor_briefings(lat: float = Query(29.6857, description="Farm latitude. Default: Karnal, Haryana"), lon: float = Query(76.9905, description="Farm longitude. Default: Karnal, Haryana")):
+    """## Module G – Agentic Advisor
+    Autonomous multi-signal advisory engine. Combines live sensor data, weather forecast,
+    and disease risk into ranked farm briefings.
+
+    **Try with different farm locations:**
+    - Karnal (default): `lat=29.6857, lon=76.9905`
+    - Ahmedabad: `lat=23.0225, lon=72.5714`
+    - Pune: `lat=18.5204, lon=73.8567`
+
+    **Returns:** ranked briefings (critical/high/medium/low priority) with recommended actions,
+    estimated impact, and data sources used.
+    """
     briefings = []
 
     # --- Fetch live sensor data ---
