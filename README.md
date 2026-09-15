@@ -354,23 +354,3 @@ krishidrishti/
 ├── runtime.txt                 # Python 3.11.9
 └── README.md                   # ← This file
 ```
-
-## Environment Variables
-
-### Backend (`backend/.env`)
-| Variable | Purpose | Required |
-|---|---|---|
-| `LLM_API_KEY` | Groq API key (get free at console.groq.com) | No – falls back to KB |
-| `MONGODB_URI` | MongoDB Atlas connection string | No – works without persistence |
-| `JWT_SECRET` | JWT signing secret | Yes if using auth |
-| `PLANTNET_API_KEY` | Pl@ntNet plant validation key | No – fails open |
-| `LLM_MODEL` | Override LLM model (default: `llama-3.3-70b-versatile`) | No |
-
-### Frontend (`krishidrishti_frontend/.env.local`)
-| Variable | Purpose |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | Backend URL (e.g. `http://localhost:8000`) |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
-| `CLERK_SECRET_KEY` | Clerk secret key |
-| `NEXT_PUBLIC_DEFAULT_LAT` | Default farm latitude (default: 29.6857 Karnal) |
-| `NEXT_PUBLIC_DEFAULT_LON` | Default farm longitude (default: 76.9905 Karnal) |
