@@ -15,7 +15,9 @@ import {
 } from "lucide-react";
 import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 
-const ASSISTANT_UI = {
+const ASSISTANT_UI: Record<import("@/lib/context/LanguageContext").Language, {
+  title: string; subtitle: string; placeholder: string; thinking: string; suggested: string;
+}> = {
   en: {
     title: "KrishiDrishti AI Assistant",
     subtitle: "Multilingual agricultural co-pilot trained on regional agronomy, plant pathology, and precision fertigation.",

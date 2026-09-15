@@ -35,6 +35,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { DownloadReportButton } from "@/components/common/DownloadReportButton";
+import { useLanguage } from "@/lib/context/LanguageContext";
 
 export default function DashboardPage() {
   const [history, setHistory] = useState<any[]>([]);
@@ -44,6 +45,7 @@ export default function DashboardPage() {
   const [sensors, setSensors] = useState<any>(null);
   const [briefings, setBriefings] = useState<any[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     Promise.all([
@@ -72,12 +74,12 @@ export default function DashboardPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight text-stone-900">
-                Karnal Precision Agro-Hub
+                {t("dashboardTitle")}
               </h1>
               <SimulationBadge />
             </div>
             <p className="mt-1 text-xs sm:text-sm text-stone-500">
-              Operational synthesis across crop pathology, root zone hydrology, microclimate indices, and agentic briefings.
+              {t("dashboardDesc")}
             </p>
           </div>
 
@@ -125,7 +127,7 @@ export default function DashboardPage() {
               className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-800 transition-colors"
             >
               <ScanLine className="h-4 w-4" />
-              <span>Scan Crop Leaf</span>
+              <span>{t("scanCropLeaf")}</span>
             </Link>
           </div>
         </div>
@@ -133,16 +135,16 @@ export default function DashboardPage() {
         {/* Modular Stat Cards Grid (Conditionally adapts to feature flags) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
-            title="Overall Crop Health"
+            title={t("overallCropHealth")}
             value="89%"
-            subtitle="Plot A foliage integrity"
+            subtitle={t("foliageIntegrity")}
             icon={ShieldCheck}
             trend={{ value: "+2.4% vs last cycle", positive: true }}
             accentColor="green"
           />
 
           <StatCard
-            title="Active Disease Alerts"
+            title={t("activeDiseaseAlerts")}
             value="1 Alert"
             subtitle="Tomato Early Blight (Moderate)"
             icon={AlertTriangle}
@@ -151,7 +153,7 @@ export default function DashboardPage() {
 
           {featureFlags.irrigation && irrigation && (
             <StatCard
-              title="Soil Moisture"
+              title={t("soilMoisture")}
               value={`${irrigation.currentMoisture}%`}
               subtitle={`Deficit: ${irrigation.targetMoistureMin - irrigation.currentMoisture}% below min`}
               icon={Droplets}
@@ -161,7 +163,7 @@ export default function DashboardPage() {
 
           {featureFlags.sustainability && sustainability && (
             <StatCard
-              title="Sustainability Rating"
+              title={t("sustainabilityRating2")}
               value={`${sustainability.overallScore}/100`}
               subtitle={`Grade ${sustainability.grade} • Top Tier`}
               icon={Leaf}
@@ -179,14 +181,14 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-emerald-700" />
                   <h3 className="font-semibold text-stone-900 text-sm">
-                    Today's Agentic Operational Briefing
+                    {t("todaysBriefing")}
                   </h3>
                 </div>
                 <Link
                   href="/advisor"
                   className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
                 >
-                  <span>View All Signals</span>
+                  <span>{t("viewAllSignals")}</span>
                   <ArrowRight className="h-3 w-3" />
                 </Link>
               </div>
@@ -213,28 +215,28 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <CloudSun className="h-4 w-4 text-amber-600" />
                   <h3 className="font-semibold text-stone-900 text-sm">
-                    Microclimate Risk
+                    {t("microclimatRisk")}
                   </h3>
                 </div>
                 <Link
                   href="/weather"
                   className="text-xs font-semibold text-emerald-700 hover:text-emerald-800"
                 >
-                  Full Radar
+                  {t("fullRadar")}
                 </Link>
               </div>
 
               <div className="space-y-3 text-xs">
                 <div className="flex justify-between items-center py-1 border-b border-stone-100">
-                  <span className="text-stone-500">Current Temp</span>
+                  <span className="text-stone-500">{t("currentTemp")}</span>
                   <span className="font-bold text-stone-900">{weather.temperature}°C</span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-stone-100">
-                  <span className="text-stone-500">Air Humidity</span>
+                  <span className="text-stone-500">{t("airHumidity")}</span>
                   <span className="font-bold text-stone-900">{weather.humidity}%</span>
                 </div>
                 <div className="flex justify-between items-center py-1 border-b border-stone-100">
-                  <span className="text-stone-500">Pathogen Risk</span>
+                  <span className="text-stone-500">{t("pathogenRisk")}</span>
                   <span className="font-bold text-amber-800">{weather.diseaseRiskCategory} ({weather.diseaseRiskScore}/100)</span>
                 </div>
               </div>
@@ -251,15 +253,15 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold text-stone-900 text-sm">
-                Recent Foliage Inspections
+                {t("recentFoliageInspections")}
               </h3>
-              <p className="text-xs text-stone-500">Validated computer vision field predictions</p>
+              <p className="text-xs text-stone-500">{t("diagnosisDesc")}</p>
             </div>
             <Link
               href="/diagnosis/history"
               className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
             >
-              <span>Full Audit History</span>
+              <span>{t("fullAuditHistory")}</span>
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
