@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-export type Language = "en" | "hi" | "pa" | "te";
+export type Language = "en" | "hi" | "pa" | "te" | "gu";
 
 export const translations = {
   en: {
@@ -457,6 +457,104 @@ export const translations = {
     analyzeCrop: "పంటను విశ్లేషించండి",
     explorePlatform: "వ్యవసాయ దర్శిని చూడండి",
   },
+  gu: {
+    dashboard: "ડેશબોર્ડ",
+    cropDiagnosis: "પાક રોગ નિદાન",
+    cropRecommendation: "પાક ભલામણ",
+    smartIrrigation: "સ્માર્ટ સિંચાઈ",
+    weatherIntelligence: "હવામાન માહિતી",
+    sustainabilityScore: "ટકાઉ ખેતી સ્કોર",
+    farmMonitoring: "ખેત દેખરેખ (IoT)",
+    aiAssistant: "AI ખેડૂત સહાયક",
+    farmAdvisor: "ખેતી સલાહકાર",
+    settings: "સેટિંગ્સ",
+    activeStation: "સક્રિય સ્ટેશન",
+    quickDiagnosis: "ઝડપી તપાસ",
+    stationName: "ઉત્તર કૃષિ કેન્દ્ર (હરિયાણા)",
+    plotInfo: "પ્લોટ A (કરનાલ હબ)",
+    plotDetails: "4.2 હેક્ટર • ડ્રિપ સક્રિય",
+    smartAgri: "સ્માર્ટ ખેતી",
+    simulationMode: "સિમ્યુલેશન મોડ",
+    coreAi: "કોર AI",
+    agentic: "એજન્ટિક",
+    irrigationTitle: "સ્માર્ટ સિંચાઈ અને જમીન ભેજ વ્યવસ્થાપન",
+    irrigationDesc: "સેન્સર-આધારિત મૂળ ઝોન ભેજ ટેલિમેટ્રી, બાષ્પોત્સર્જન મોડેલિંગ અને હવામાન-સુમેળ સિંચાઈ સમયપત્રક.",
+    manualCycle: "મેન્યુઅલ સિંચાઈ ચક્ર શરૂ કરો",
+    haltSolenoid: "સક્રિય સોલેનોઇડ બંધ કરો",
+    rootZoneMoisture: "મૂળ ઝોન ભેજ",
+    target: "લક્ષ્ય",
+    waterRequired: "જરૂરી પાણી",
+    fieldCapacity: "ખેત ક્ષમતા માટે",
+    nextCycle: "આગળનું ચક્ર",
+    eveningDrip: "સાંજની ડ્રિપ સ્લોટ",
+    valveStatus: "વાલ્વ સ્થિતિ",
+    valveRunning: "ચાલુ (ડ્રિપ)",
+    valveStandby: "સ્ટેન્ડબાય",
+    soilMoistureGauge: "જમીન ભેજ ગેજ",
+    capacitiveDepth: "20 સે.મી. ઊંડાઈ પર સેન્સર ડેટા",
+    volumetricContent: "પાણીનું પ્રમાણ",
+    underMoistureTitle: "ભલામણ કરેલ ભેજ કરતાં ઓછું",
+    underMoistureDesc: "જમીનનો ભેજ ઓછો છે, સિંચાઈ કરવાની સલાહ છે.",
+    moistureTrendTitle: "24-કલાક જમીન ભેજ ટ્રેન્ડ",
+    moistureTrendDesc: "કલાકદીઠ રીડિંગ",
+    moisturePercent: "ભેજ %",
+    targetMin: "લઘુત્તમ લક્ષ્ય (45%)",
+    recTitle: "બુદ્ધિશાળી પાક ભલામણ",
+    recDesc: "જમીનના પોષક તત્વો અને આબોહવા સ્થિતિ દાખલ કરો અને AI દ્વારા શ્રેષ્ઠ પાક મેળવો.",
+    soilParamsTitle: "જમીન અને આબોહવા પ્રાચલ",
+    soilType: "જમીનનો પ્રકાર",
+    loamySoil: "ગોરાડુ જમીન (સંતુલિત)",
+    clayeyLoam: "ચીકણી ગોરાડુ",
+    sandyLoam: "રેતાળ ગોરાડુ",
+    blackCotton: "કાળી કપાસ જમીન",
+    nitrogen: "નાઇટ્રોજન (N)",
+    phosphorus: "ફોસ્ફરસ (P)",
+    potassium: "પોટેશિયમ (K)",
+    soilPh: "જમીન pH",
+    temp: "તાપમાન (°C)",
+    humidity: "ભેજ (%)",
+    rainfall: "વરસાદ (મિ.મી)",
+    calcBtn: "ભલામણ કરેલ પાક ગણો",
+    evaluatingBtn: "મૂલ્યાંકન થઈ રહ્યું છે...",
+    awaitingTitle: "જમીન મૂલ્યાંકનની રાહ",
+    awaitingDesc: "ડાબી બાજુ NPK અને આબોહવા મૂલ્યો સેટ કરો અને પરિણામ જુઓ.",
+    projectedYield: "અંદાજિત ઉત્પાદન",
+    suitability: "યોગ્યતા",
+    waterReq: "પાણીની જરૂર",
+    growthCycle: "સમયગાળો",
+    days: "દિવસ",
+    sustainabilityRating: "ટકાઉ રેટિંગ",
+    diagnosisTitle: "AI પાક રોગ શોધ",
+    diagnosisDesc: "પાંદડાની છબી અપલોડ કરો અને રોગ વિગતો મેળવો.",
+    diagnosisHistory: "નિદાન ઇતિહાસ",
+    scanLeafBtn: "પાંદડું સ્કેન કરો",
+    dashboardTitle: "કરનાલ પ્રિસિઝન એગ્રો-હબ",
+    dashboardDesc: "પાક આરોગ્ય અને માહિતી કેન્દ્ર.",
+    overallCropHealth: "કુલ પાક આરોગ્ય",
+    foliageIntegrity: "પ્લોટ A ની સ્થિતિ",
+    activeDiseaseAlerts: "સક્રિય રોગ ચેતવણીઓ",
+    settingsTitle: "ખેત પ્રાધાન્યતાઓ અને રૂપરેખા",
+    settingsDesc: "જમીન વિસ્તાર, સ્થાનિક આબોહવા, એકમો અને બહુભાષી સેવાઓ સંચાલિત કરો.",
+    farmerProfile: "ખેડૂત અને પ્લોટ પ્રોફાઇલ",
+    farmerName: "ખેડૂતનું નામ",
+    contactPhone: "સંપર્ક ફોન",
+    farmHolding: "ખેતરનું નામ",
+    locationCoords: "સ્થાન",
+    multilingual: "બહુભાષી અને એકમ",
+    appLanguage: "એપ્લિકેશન ભાષા",
+    areaUnits: "વિસ્તાર એકમો",
+    realtimeAlerts: "રીઅલ-ટાઇમ ચેતવણીઓ",
+    diseaseAlerts: "પાક રોગ ચેતવણીઓ",
+    diseaseAlertsDesc: "પડોશી ખેતરોમાં ફૂગ અથવા રોગ ફેલાવાનો ખતરો હોય ત્યારે ચેતવણી.",
+    weatherAlerts: "વરસાદ અને હિમ ચેતવણી",
+    weatherAlertsDesc: "સિંચાઈ અથવા જંતુનાશક છંટકાવ મોકૂફ રાખવાની સૂચના.",
+    saveSettings: "સેટિંગ્સ સાચવો",
+    savingSettings: "સાચવી રહ્યા છીએ...",
+    savedSuccess: "સફળતાપૂર્વક સાચવ્યું!",
+    settingsPersisted: "સેટિંગ્સ સુરક્ષિત રીતે સાચવ્યા.",
+    analyzeCrop: "પાકની તપાસ કરો",
+    explorePlatform: "કૃષિ દૃષ્ટિ જુઓ",
+  },
 };
 
 interface LanguageContextType {
@@ -477,13 +575,14 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("krishidrishti_language");
-      if (saved && (saved === "en" || saved === "hi" || saved === "pa" || saved === "te")) {
+      const validLangs = ["en", "hi", "pa", "te", "gu"];
+      if (saved && validLangs.includes(saved)) {
         setLanguageState(saved as Language);
       } else {
         const settings = localStorage.getItem("krishidrishti_settings");
         if (settings) {
           const parsed = JSON.parse(settings);
-          if (parsed.language && (parsed.language === "en" || parsed.language === "hi" || parsed.language === "pa" || parsed.language === "te")) {
+          if (parsed.language && validLangs.includes(parsed.language)) {
             setLanguageState(parsed.language);
           }
         }

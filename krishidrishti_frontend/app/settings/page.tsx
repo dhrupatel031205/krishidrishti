@@ -158,6 +158,7 @@ export default function SettingsPage() {
                   <option value="en">English (Default)</option>
                   <option value="hi">हिंदी (Hindi)</option>
                   <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+                  <option value="gu">ગુજરાતી (Gujarati)</option>
                   <option value="te">తెలుగు (Telugu)</option>
                 </select>
                 <p className="text-[11px] text-stone-400 mt-1">
