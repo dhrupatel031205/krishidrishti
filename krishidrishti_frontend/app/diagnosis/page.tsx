@@ -6,7 +6,7 @@ import { ImageUploader } from "@/components/diagnosis/ImageUploader";
 import { DiagnosisResult } from "@/components/diagnosis/DiagnosisResult";
 import { predictCropDisease } from "@/lib/api/client";
 import { PredictionResponse } from "@/types";
-import { ScanLine, History, Sparkles, BookOpen, AlertCircle } from "lucide-react";
+import { ScanLine, History, Sparkles, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/context/LanguageContext";
 
@@ -68,14 +68,6 @@ export default function DiagnosisPage() {
             </Link>
           </div>
         </div>
-
-        {/* Error Alert — only for network/server errors, not leaf validation (shown in ImageUploader) */}
-        {error && (
-          <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            <p>{error}</p>
-          </div>
-        )}
 
         {/* Primary Diagnosis Flow */}
         {!result ? (

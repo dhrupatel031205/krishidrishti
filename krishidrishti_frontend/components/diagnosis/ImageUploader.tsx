@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { UploadCloud, Image as ImageIcon, Sparkles, AlertCircle, RefreshCw, X } from "lucide-react";
+import { UploadCloud, Image as ImageIcon, Sparkles, RefreshCw, X } from "lucide-react";
 import { sampleLeaves } from "@/lib/mock/data";
 import { cn } from "@/lib/utils";
 
@@ -95,29 +95,10 @@ export function ImageUploader({ onAnalyze, isLoading, validationError }: ImageUp
   };
 
   // Show client error first, then backend validation error
-  const displayError = clientError || validationError;
+  // const displayError = clientError || validationError;
 
   return (
     <div className="space-y-6">
-
-      {/* Validation error banner */}
-      {displayError && (
-        <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
-          <AlertCircle className="h-5 w-5 shrink-0 text-rose-500 mt-0.5" />
-          <div>
-            <p className="text-sm font-semibold text-rose-800">
-              {clientError ? "Invalid File" : "Invalid Image — Not a Crop Leaf"}
-            </p>
-            <p className="mt-0.5 text-xs text-rose-700 leading-relaxed">{displayError}</p>
-            {!clientError && (
-              <p className="mt-2 text-xs text-rose-600 font-medium">
-                ✅ Accepted: crop leaves, plant foliage, diseased leaf close-ups<br />
-                ❌ Rejected: people, animals, buildings, cars, landscapes, blank images
-              </p>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Upload Box or Image Preview */}
       {!previewUrl ? (
