@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { fetchSensorDashboard } from "@/lib/api/client";
 import { SensorDashboardData } from "@/types";
@@ -8,14 +8,9 @@ import { StatCard, StatusBadge, SimulationBadge } from "@/components/common/Stat
 import { PageLoader } from "@/components/common/Loader";
 import {
   Activity,
-  Radio,
   BatteryCharging,
   Clock,
-  Sparkles,
-  Thermometer,
-  Droplets,
-  Sun,
-  ShieldCheck,
+  RefreshCw,
 } from "lucide-react";
 import {
   LineChart,
@@ -34,19 +29,26 @@ export default function MonitoringPage() {
   const [data, setData] = useState<SensorDashboardData | null>(null);
   const [isSimulatedMode, setIsSimulatedMode] = useState(true);
 
-  const loadData = () => {
-    fetchSensorDashboard().then((d) => {
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const d = await fetchSensorDashboard();
       setData(d);
       setIsSimulatedMode(d.isSimulationMode);
-    });
-  };
+      setLastUpdated(new Date());
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadData();
-    // Auto-refresh every 30 seconds to simulate live telemetry
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loadData]);
 
   if (!data) {
     return (
@@ -75,11 +77,18 @@ export default function MonitoringPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {lastUpdated && (
+              <span className="text-xs text-stone-400">
+                Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
             <button
               onClick={loadData}
-              className="text-xs font-semibold rounded-xl border border-stone-300 bg-white px-3 py-2 text-stone-700 shadow-xs hover:bg-stone-50"
+              disabled={refreshing}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 shadow-xs hover:bg-stone-50 disabled:opacity-50"
             >
-              Mode: {isSimulatedMode ? t("simulatedSensors") : t("hardwareGateway")}
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
             </button>
             {data && (
               <DownloadReportButton

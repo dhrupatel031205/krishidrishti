@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { StatCard, StatusBadge, SimulationBadge } from "@/components/common/StatCard";
 import { PageLoader } from "@/components/common/Loader";
@@ -18,12 +18,11 @@ import {
   Droplets,
   CloudSun,
   Leaf,
-  Activity,
   AlertTriangle,
   ArrowRight,
   Sparkles,
   ShieldCheck,
-  TrendingUp,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -45,18 +44,32 @@ export default function DashboardPage() {
   const [sensors, setSensors] = useState<any>(null);
   const [briefings, setBriefings] = useState<any[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const { t } = useLanguage();
 
-  useEffect(() => {
-    Promise.all([
-      fetchDiagnosisHistory().then(setHistory),
-      featureFlags.irrigation ? fetchIrrigationStatus().then(setIrrigation) : Promise.resolve(),
-      featureFlags.weather ? fetchAgroWeather().then(setWeather) : Promise.resolve(),
-      featureFlags.sustainability ? fetchSustainabilityReport().then(setSustainability) : Promise.resolve(),
-      featureFlags.monitoring ? fetchSensorDashboard().then(setSensors) : Promise.resolve(),
-      featureFlags.advisor ? fetchAdvisoryBriefings().then(({ briefings }) => setBriefings(briefings)) : Promise.resolve(),
-    ]).finally(() => setPageLoading(false));
+  const loadAll = useCallback(async (initial = false) => {
+    if (initial) setPageLoading(true); else setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchDiagnosisHistory().then(setHistory),
+        featureFlags.irrigation ? fetchIrrigationStatus().then(setIrrigation) : Promise.resolve(),
+        featureFlags.weather ? fetchAgroWeather().then(setWeather) : Promise.resolve(),
+        featureFlags.sustainability ? fetchSustainabilityReport().then(setSustainability) : Promise.resolve(),
+        featureFlags.monitoring ? fetchSensorDashboard().then(setSensors) : Promise.resolve(),
+        featureFlags.advisor ? fetchAdvisoryBriefings().then(({ briefings }) => setBriefings(briefings)) : Promise.resolve(),
+      ]);
+      setLastUpdated(new Date());
+    } finally {
+      if (initial) setPageLoading(false); else setRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadAll(true);
+    const interval = setInterval(() => loadAll(false), 60_000);
+    return () => clearInterval(interval);
+  }, [loadAll]);
 
   if (pageLoading) {
     return (
@@ -84,6 +97,19 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            {lastUpdated && (
+              <span className="text-xs text-stone-400">
+                Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+            <button
+              onClick={() => loadAll(false)}
+              disabled={refreshing}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-semibold text-stone-700 shadow-xs hover:bg-stone-50 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
             <DownloadReportButton
               reportTitle="Farm Dashboard Summary"
               getData={() => ({

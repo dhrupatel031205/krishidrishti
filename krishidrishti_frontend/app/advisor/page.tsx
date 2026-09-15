@@ -1,20 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { fetchAdvisoryBriefings } from "@/lib/api/client";
 import { AdvisoryBriefing } from "@/types";
 import { SimulationBadge } from "@/components/common/StatCard";
 import {
   Sparkles,
-  AlertOctagon,
-  AlertTriangle,
-  Info,
-  CheckCircle2,
   Layers,
-  ArrowRight,
-  ShieldCheck,
+  CheckCircle2,
   Brain,
+  RefreshCw,
 } from "lucide-react";
 import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 import { useLanguage } from "@/lib/context/LanguageContext";
@@ -24,14 +20,27 @@ export default function AdvisorPage() {
   const [briefings, setBriefings] = useState<AdvisoryBriefing[]>([]);
   const [heroTitle, setHeroTitle] = useState("Loading farm briefing...");
   const [heroDescription, setHeroDescription] = useState("");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchAdvisoryBriefings().then(({ briefings, heroTitle, heroDescription }) => {
+  const load = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const { briefings, heroTitle, heroDescription } = await fetchAdvisoryBriefings();
       setBriefings(briefings);
       setHeroTitle(heroTitle);
       setHeroDescription(heroDescription);
-    });
+      setLastUpdated(new Date());
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 60_000); // auto-refresh every 60s
+    return () => clearInterval(interval);
+  }, [load]);
 
   const handleAcknowledge = (id: string) => {
     setBriefings((prev) =>
@@ -41,14 +50,10 @@ export default function AdvisorPage() {
 
   const getPriorityStyle = (priority: string) => {
     switch (priority) {
-      case "critical":
-        return "border-rose-300 bg-rose-50/50 text-rose-900";
-      case "high":
-        return "border-amber-300 bg-amber-50/50 text-amber-900";
-      case "medium":
-        return "border-emerald-300 bg-emerald-50/50 text-emerald-900";
-      default:
-        return "border-stone-300 bg-stone-50 text-stone-800";
+      case "critical": return "border-rose-300 bg-rose-50/50 text-rose-900";
+      case "high":     return "border-amber-300 bg-amber-50/50 text-amber-900";
+      case "medium":   return "border-emerald-300 bg-emerald-50/50 text-emerald-900";
+      default:         return "border-stone-300 bg-stone-50 text-stone-800";
     }
   };
 
@@ -69,23 +74,38 @@ export default function AdvisorPage() {
               {t("advisorDesc")}
             </p>
           </div>
-          {briefings.length > 0 && (
-            <DownloadReportButton
-              reportTitle="Agentic Advisor Briefings"
-              getData={() => ({
-                dailyBriefing: heroTitle,
-                recommendations: briefings.map((b) => ({
-                  priority: b.priority,
-                  title: b.title,
-                  reason: b.reason,
-                  recommendedAction: b.recommendedAction,
-                  estimatedImpact: b.estimatedImpact,
-                  dataSources: b.dataSources,
-                  status: b.status,
-                })),
-              })}
-            />
-          )}
+          <div className="flex items-center gap-2">
+            {lastUpdated && (
+              <span className="text-xs text-stone-400">
+                Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+            <button
+              onClick={load}
+              disabled={refreshing}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+            {briefings.length > 0 && (
+              <DownloadReportButton
+                reportTitle="Agentic Advisor Briefings"
+                getData={() => ({
+                  dailyBriefing: heroTitle,
+                  recommendations: briefings.map((b) => ({
+                    priority: b.priority,
+                    title: b.title,
+                    reason: b.reason,
+                    recommendedAction: b.recommendedAction,
+                    estimatedImpact: b.estimatedImpact,
+                    dataSources: b.dataSources,
+                    status: b.status,
+                  })),
+                })}
+              />
+            )}
+          </div>
         </div>
 
         {/* Daily Farm Briefing Hero Banner */}

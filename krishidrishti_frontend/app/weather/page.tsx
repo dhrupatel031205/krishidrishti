@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { fetchAgroWeather } from "@/lib/api/client";
 import { AgroWeatherData } from "@/types";
@@ -8,7 +8,7 @@ import { StatCard, SimulationBadge } from "@/components/common/StatCard";
 import { PageLoader } from "@/components/common/Loader";
 import {
   CloudSun, Thermometer, Droplets, CloudRain,
-  ShieldAlert, AlertCircle, LocateFixed, Loader2,
+  ShieldAlert, AlertCircle, LocateFixed, Loader2, RefreshCw,
 } from "lucide-react";
 import { DownloadReportButton } from "@/components/common/DownloadReportButton";
 
@@ -20,16 +20,18 @@ export default function WeatherPage() {
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [cityName, setCityName] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const loadWeather = async (lat?: number, lon?: number) => {
+  const loadWeather = useCallback(async (lat?: number, lon?: number) => {
     setLoading(true);
     try {
       const data = await fetchAgroWeather(lat, lon);
       setWeather(data);
+      setLastUpdated(new Date());
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Reverse geocode coords to city name using Open-Meteo geocoding (free)
   const resolveCityName = async (lat: number, lon: number) => {
@@ -79,6 +81,10 @@ export default function WeatherPage() {
   useEffect(() => {
     loadWeather();
     requestLocation();
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(() => loadWeather(coords?.lat, coords?.lon), 5 * 60_000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -101,6 +107,19 @@ export default function WeatherPage() {
 
           {/* Location pill */}
           <div className="flex items-center gap-2">
+            {lastUpdated && (
+              <span className="text-xs text-stone-400">
+                Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+            <button
+              onClick={() => loadWeather(coords?.lat, coords?.lon)}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-xs hover:bg-stone-50 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
             <div className="text-xs font-semibold text-stone-600 bg-white border border-stone-200/80 px-3 py-1.5 rounded-xl shadow-xs flex items-center gap-1.5">
               <LocateFixed className="h-3.5 w-3.5 text-emerald-600" />
               {locationState === "requesting" ? (
