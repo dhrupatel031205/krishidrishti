@@ -12,4 +12,6 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      - key: PLANTNET_API_KEY
+        sync: false
     healthCheckPath: /health
