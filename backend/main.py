@@ -847,21 +847,7 @@ def _check_post_model_safety(predicted_class: str, confidence: float, top5: list
     other_crops = [c for c in top5_crops if c != predicted_crop]
     dominant_other = len(other_crops) >= 4  # all 4 non-top1 are a different crop
 
-    low_confidence = confidence < 0.40  # reject non-leaf images (score < 0.75 on real leaves)
-
-    if low_confidence:
-        return {
-            "unsupported": True,
-            "detectedCrop": predicted_crop.capitalize(),
-            "unsupportedReason": (
-                f"The model's confidence is only {round(confidence * 100)}%, which is too low for a reliable diagnosis. "
-                "This usually means the uploaded image is not a crop leaf, or the leaf is not from one of the 38 supported PlantVillage crops. "
-                "Please upload a clear, close-up photo of a single crop leaf."
-            ),
-            "classProbabilities": top5,
-        }
     if not dominant_other:
-        return None  # model is confident and consistent - pass through
         return None  # model is confident and consistent — pass through
 
     # dominant_other but NOT low_confidence: confident but cross-crop (e.g. grape → corn)
@@ -1009,21 +995,14 @@ async def predict_disease(file: UploadFile = File(...), authorization: str = Hea
 
     contents = await file.read()
 
-    # ── Step 1: Validate it is actually a plant/leaf image ──────────────
-    is_valid, rejection_reason = _validate_plant_image(contents)
-    if not is_valid:
-        raise HTTPException(
-            status_code=422,
-            detail={"type": "invalid_image", "message": rejection_reason},
-        )
-    # ── Step 2: Run disease classification ──────────────────────────────
+    # ── Step 1: Run disease classification ──────────────────────────────
 
     image_b64 = base64.b64encode(contents).decode("utf-8")
     data_url = f"data:{file.content_type};base64,{image_b64}"
 
     d = _match_disease(file.filename or "", contents)
 
-    # ── Step 3: Post-model safety check (low confidence / cross-crop) ──
+    # ── Step 2: Post-model safety check (low confidence / cross-crop) ──
     if d.get("_from_model"):
         crop = d["crop"]
         condition = d["disease"]
