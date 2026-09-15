@@ -108,14 +108,12 @@ export function Sidebar({
       href: "/advisor",
       icon: Sparkles,
       enabled: featureFlags.advisor,
-      badge: t("agentic"),
     },
     {
       title: t("modelMetricsNav"),
       href: "/model-metrics",
       icon: Brain,
       enabled: true,
-      badge: "EfficientNet",
     },
     {
       title: t("settings"),
@@ -392,12 +390,7 @@ export function TopNav({
           </button>
         )}
 
-        <div className="text-sm font-medium text-stone-800 flex items-center gap-2">
-          <span className="hidden sm:inline text-stone-500">{t("activeStation")}:</span>
-          <span className="bg-stone-200/80 text-stone-900 px-2.5 py-1 rounded-md text-xs font-semibold">
-            {t("stationName")}
-          </span>
-        </div>
+
       </div>
 
       <div className="flex items-center gap-3">
