@@ -847,7 +847,7 @@ def _check_post_model_safety(predicted_class: str, confidence: float, top5: list
     other_crops = [c for c in top5_crops if c != predicted_crop]
     dominant_other = len(other_crops) >= 4  # all 4 non-top1 are a different crop
 
-    low_confidence = confidence < 0.65  # reject non-leaf images
+    low_confidence = confidence < 0.40  # reject non-leaf images (score < 0.75 on real leaves)
 
     if low_confidence:
         return {
@@ -987,20 +987,12 @@ def _validate_plant_image(image_bytes: bytes) -> tuple[bool, str]:
         # 2. Brightness — only reject pitch-black or pure-white blanks
         import numpy as np
         small = img.resize((64, 64), PILImage.LANCZOS)
-        arr = np.array(small, dtype=np.float32)
-        gray_arr = arr.mean(axis=2)
+        gray_arr = np.array(small.convert("L"), dtype=np.float32)
         mean_brightness = float(gray_arr.mean())
         if mean_brightness < 8:
             return False, "Image is too dark. Please take the photo in good lighting."
         if mean_brightness > 253:
             return False, "Image appears blank or overexposed. Please upload a real leaf photo."
-
-        # 3. Green-channel dominance — real leaf images have significantly more green than red/blue
-        r_mean, g_mean, b_mean = arr[:, :, 0].mean(), arr[:, :, 1].mean(), arr[:, :, 2].mean()
-        green_dominance = g_mean - (r_mean + b_mean) / 2
-        # Leaves typically have green_dominance > 5; logos/objects are near 0 or negative
-        if green_dominance < 3 and mean_brightness > 30:
-            return False, "This image does not appear to be a crop leaf. Please upload a clear, close-up photo of a plant leaf."
 
         return True, ""
 
