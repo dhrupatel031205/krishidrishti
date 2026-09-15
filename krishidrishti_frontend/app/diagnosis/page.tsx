@@ -6,7 +6,7 @@ import { ImageUploader } from "@/components/diagnosis/ImageUploader";
 import { DiagnosisResult } from "@/components/diagnosis/DiagnosisResult";
 import { predictCropDisease } from "@/lib/api/client";
 import { PredictionResponse } from "@/types";
-import { ScanLine, History, Sparkles, BookOpen } from "lucide-react";
+import { ScanLine, History, Sparkles, BookOpen, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/context/LanguageContext";
 

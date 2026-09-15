@@ -957,33 +957,68 @@ def _imagenet_is_plant(image: "PILImage.Image") -> tuple[bool, str]:
         return True, "unknown"  # fail open
 
 
-def _validate_plant_image(image_bytes: bytes) -> tuple[bool, str]:
+# ── Pl@ntNet plant/leaf validator ─────────────────────────────────────
+
+def _plantnet_is_plant(image_bytes: bytes, filename: str = "leaf.jpg") -> tuple[bool, str]:
     """
-    Light image sanity check — only rejects obviously invalid inputs.
-    Intentionally permissive: real leaf images must never be blocked.
+    Calls Pl@ntNet Identify API to check if the image contains a plant.
+    Returns (is_plant, rejection_reason).
+    Fails open (returns True) if API key is missing or call fails.
     """
+    api_key = os.getenv("PLANTNET_API_KEY", "")
+    if not api_key or api_key.startswith("your_"):
+        return True, ""  # no key configured — fail open
+
     try:
-        img = PILImage.open(io.BytesIO(image_bytes)).convert("RGB")
-        w, h = img.size
+        # Pl@ntNet expects multipart/form-data with the image file
+        files = [("images", (filename, image_bytes, "image/jpeg"))]
+        params = {
+            "api-key": api_key,
+            "include-related-images": "false",
+            "no-reject": "false",   # let Pl@ntNet return a "no-plant" signal
+            "lang": "en",
+            "type": "kt",           # kt = all organs (leaf, flower, fruit, bark)
+        }
+        r = requests.post(
+            "https://my-api.plantnet.org/v2/identify/all",
+            files=files,
+            params=params,
+            timeout=12,
+        )
 
-        # 1. Minimum resolution
-        if w < 32 or h < 32:
-            return False, "Image resolution is too low. Please upload a clear crop leaf photo."
+        # 404 from Pl@ntNet means it could not identify any plant
+        if r.status_code == 404:
+            data = r.json()
+            return False, (
+                "Pl\u40antNet could not identify any plant in this image. "
+                "Please upload a clear, close-up photo of a crop leaf."
+            )
 
-        # 2. Brightness — only reject pitch-black or pure-white blanks
-        import numpy as np
-        small = img.resize((64, 64), PILImage.LANCZOS)
-        gray_arr = np.array(small.convert("L"), dtype=np.float32)
-        mean_brightness = float(gray_arr.mean())
-        if mean_brightness < 8:
-            return False, "Image is too dark. Please take the photo in good lighting."
-        if mean_brightness > 253:
-            return False, "Image appears blank or overexposed. Please upload a real leaf photo."
+        if not r.ok:
+            print(f"[WARN] Pl@ntNet API error {r.status_code}: {r.text[:200]}")
+            return True, ""  # fail open on unexpected API error
 
+        data = r.json()
+        results = data.get("results", [])
+
+        if not results:
+            return False, (
+                "Pl\u40antNet could not identify any plant in this image. "
+                "Please upload a clear, close-up photo of a crop leaf."
+            )
+
+        # Pl@ntNet returned at least one plant match — it's a plant
+        best = results[0]
+        score = round(best.get("score", 0) * 100, 1)
+        species = best.get("species", {}).get("scientificNameWithoutAuthor", "unknown plant")
+        common = best.get("species", {}).get("commonNames", [])
+        common_name = common[0] if common else species
+        print(f"[INFO] Pl@ntNet identified: {species} ({common_name}) score={score}%")
         return True, ""
 
     except Exception as e:
-        return False, f"Could not process image: {str(e)}. Please upload a valid JPG, PNG, or WEBP file."
+        print(f"[WARN] Pl@ntNet validation error: {e}")
+        return True, ""  # fail open on any exception
 
 
 
@@ -995,7 +1030,15 @@ async def predict_disease(file: UploadFile = File(...), authorization: str = Hea
 
     contents = await file.read()
 
-    # ── Step 1: Run disease classification ──────────────────────────────
+    # ── Step 1: Pl@ntNet plant/leaf validation ────────────────────────
+    is_plant, rejection_reason = _plantnet_is_plant(contents, file.filename or "leaf.jpg")
+    if not is_plant:
+        raise HTTPException(
+            status_code=422,
+            detail={"type": "not_a_plant", "message": rejection_reason},
+        )
+
+    # ── Step 2: Run disease classification ──────────────────────────────
 
     image_b64 = base64.b64encode(contents).decode("utf-8")
     data_url = f"data:{file.content_type};base64,{image_b64}"
