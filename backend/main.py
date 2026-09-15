@@ -988,14 +988,13 @@ def _plantnet_is_plant(image_bytes: bytes, filename: str = "leaf.jpg") -> tuple[
 
         # 404 from Pl@ntNet means it could not identify any plant
         if r.status_code == 404:
-            data = r.json()
             return False, (
-                "Pl\u40antNet could not identify any plant in this image. "
+                "PlantNet could not identify any plant in this image. "
                 "Please upload a clear, close-up photo of a crop leaf."
             )
 
         if not r.ok:
-            print(f"[WARN] Pl@ntNet API error {r.status_code}: {r.text[:200]}")
+            print(f"[WARN] PlantNet API error {r.status_code}: {r.text[:200]}")
             return True, ""  # fail open on unexpected API error
 
         data = r.json()
@@ -1003,7 +1002,7 @@ def _plantnet_is_plant(image_bytes: bytes, filename: str = "leaf.jpg") -> tuple[
 
         if not results:
             return False, (
-                "Pl\u40antNet could not identify any plant in this image. "
+                "PlantNet could not identify any plant in this image. "
                 "Please upload a clear, close-up photo of a crop leaf."
             )
 
