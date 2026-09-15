@@ -87,11 +87,20 @@ export async function predictCropDisease(fileOrSampleId: File | string): Promise
   const response = await fetch(`${API_BASE_URL}/api/predict`, { method: "POST", body: formData, headers: getAuthHeaders() });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    // detail can be a string or an object like { type, message }
     const detail = err?.detail;
-    const msg =
-      (typeof detail === "object" && detail !== null ? detail.message : detail) ||
-      `Inference engine failed with status ${response.status}`;
+    let msg: string;
+    if (typeof detail === "object" && detail !== null) {
+      if (detail.type === "unsupported_disease") {
+        // Post-model safety check: model is uncertain or cross-crop
+        msg = detail.unsupportedReason ||
+          `The uploaded leaf could not be confidently identified. Detected crop: ${detail.detectedCrop || "unknown"}. Please upload a clearer, single-leaf close-up.`;
+      } else {
+        // invalid_image or other structured error
+        msg = detail.message || JSON.stringify(detail);
+      }
+    } else {
+      msg = detail || `Server error (${response.status}). Please try again.`;
+    }
     throw new Error(String(msg));
   }
   return response.json();

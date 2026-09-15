@@ -845,11 +845,11 @@ def _check_post_model_safety(predicted_class: str, confidence: float, top5: list
     # This catches: grape leaf → model says Corn Healthy
     top5_crops = [_extract_crop_from_class(t["className"]) for t in top5]
     other_crops = [c for c in top5_crops if c != predicted_crop]
-    dominant_other = len(other_crops) >= 3  # 3+ of top5 are a different crop
+    dominant_other = len(other_crops) >= 4  # all 4 non-top1 are a different crop
 
-    low_confidence = confidence < 0.20  # only block near-random predictions
+    low_confidence = confidence < 0.10  # only block near-random predictions
 
-    if not (low_confidence or dominant_other):
+    if not (low_confidence and dominant_other):
         return None  # model is confident and consistent — pass through
 
     # dominant_other but NOT low_confidence: confident but cross-crop (e.g. grape → corn)
