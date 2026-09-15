@@ -6,9 +6,24 @@ import jsPDF from "jspdf";
 export function UserManualDownload({ variant = "default" }: { variant?: "default" | "hero" | "navbar" }) {
   const [loading, setLoading] = useState(false);
 
+  const loadLogoBase64 = async (): Promise<string | null> => {
+    try {
+      const res = await fetch("/logo.png");
+      const blob = await res.blob();
+      return await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  };
+
   const generate = async () => {
     setLoading(true);
     try {
+      const logoBase64 = await loadLogoBase64();
       const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const W = doc.internal.pageSize.getWidth();
       const H = doc.internal.pageSize.getHeight();
@@ -23,14 +38,19 @@ export function UserManualDownload({ variant = "default" }: { variant?: "default
       const drawHeader = () => {
         doc.setFillColor(27, 67, 50);
         doc.rect(0, 0, W, 44, "F");
+        // Logo
+        if (logoBase64) {
+          doc.addImage(logoBase64, "PNG", M, 6, 14, 14);
+        }
+        const textX = logoBase64 ? M + 17 : M;
         doc.setFont("helvetica", "bold");
         doc.setFontSize(20);
         doc.setTextColor(255, 255, 255);
-        doc.text("KrishiDrishti – AgriSmart AI", M, 17);
+        doc.text("KrishiDrishti – AgriSmart AI", textX, 17);
         doc.setFont("helvetica", "normal");
         doc.setFontSize(8);
         doc.setTextColor(52, 211, 153);
-        doc.text("SIH 2026 Internal Hackathon | L. J. Institute of Engineering and Technology | Problem C-433", M, 25);
+        doc.text("SIH 2026 Internal Hackathon | L. J. Institute of Engineering and Technology | Problem C-433", textX, 25);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(12);
         doc.setTextColor(255, 255, 255);

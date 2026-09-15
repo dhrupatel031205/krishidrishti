@@ -21,7 +21,7 @@ export const sampleLeaves = [
     label: "Tomato Early Blight",
     crop: "Tomato",
     condition: "Early Blight (Alternaria solani)",
-    image: "https://images.unsplash.com/photo-1592417817098-8f3d6910985c?auto=format&fit=crop&w=600&q=80",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Tomato_leaf_with_early_blight.jpg/640px-Tomato_leaf_with_early_blight.jpg",
     prediction: {
       id: "diag-101",
       crop: "Tomato",
@@ -68,7 +68,7 @@ export const sampleLeaves = [
     label: "Potato Late Blight",
     crop: "Potato",
     condition: "Late Blight (Phytophthora infestans)",
-    image: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=600&q=80",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Potato_late_blight.jpg/640px-Potato_late_blight.jpg",
     prediction: {
       id: "diag-102",
       crop: "Potato",
@@ -110,7 +110,7 @@ export const sampleLeaves = [
     label: "Healthy Bell Pepper",
     crop: "Bell Pepper",
     condition: "Healthy Foliage",
-    image: "https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?auto=format&fit=crop&w=600&q=80",
+    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Paprika_2009_002.jpg/640px-Paprika_2009_002.jpg",
     prediction: {
       id: "diag-103",
       crop: "Bell Pepper",
@@ -157,7 +157,7 @@ export const mockDiagnosisHistory: DiagnosisHistoryItem[] = [
     confidence: 0.942,
     severity: "moderate",
     status: "active",
-    imageUrl: "https://images.unsplash.com/photo-1592417817098-8f3d6910985c?auto=format&fit=crop&w=400&q=80"
+    imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Tomato_leaf_with_early_blight.jpg/400px-Tomato_leaf_with_early_blight.jpg"
   },
   {
     id: "diag-102",
@@ -167,7 +167,7 @@ export const mockDiagnosisHistory: DiagnosisHistoryItem[] = [
     confidence: 0.915,
     severity: "critical",
     status: "treated",
-    imageUrl: "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&w=400&q=80"
+    imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Potato_late_blight.jpg/400px-Potato_late_blight.jpg"
   },
   {
     id: "diag-103",
@@ -177,7 +177,7 @@ export const mockDiagnosisHistory: DiagnosisHistoryItem[] = [
     confidence: 0.985,
     severity: "healthy",
     status: "monitoring",
-    imageUrl: "https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?auto=format&fit=crop&w=400&q=80"
+    imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Paprika_2009_002.jpg/400px-Paprika_2009_002.jpg"
   },
   {
     id: "diag-104",
@@ -187,7 +187,7 @@ export const mockDiagnosisHistory: DiagnosisHistoryItem[] = [
     confidence: 0.892,
     severity: "moderate",
     status: "treated",
-    imageUrl: "https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=400&q=80"
+    imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Wheat_close-up.JPG/400px-Wheat_close-up.JPG"
   },
   {
     id: "diag-105",
@@ -197,7 +197,7 @@ export const mockDiagnosisHistory: DiagnosisHistoryItem[] = [
     confidence: 0.931,
     severity: "low",
     status: "monitoring",
-    imageUrl: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=400&q=80"
+    imageUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Red_Apple.jpg/400px-Red_Apple.jpg"
   }
 ];
 
