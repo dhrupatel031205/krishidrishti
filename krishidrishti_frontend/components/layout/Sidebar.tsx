@@ -111,7 +111,7 @@ export function Sidebar({
       badge: t("agentic"),
     },
     {
-      title: "Model Metrics",
+      title: t("modelMetricsNav"),
       href: "/model-metrics",
       icon: Brain,
       enabled: true,

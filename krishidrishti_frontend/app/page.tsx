@@ -20,9 +20,11 @@ import {
 } from "lucide-react";
 import { UserManualDownload } from "@/components/common/UserManualDownload";
 import { EvaluatorManualDownload } from "@/components/common/EvaluatorManualDownload";
+import { useLanguage } from "@/lib/context/LanguageContext";
 
 export default function LandingPage() {
   const { isSignedIn, isLoaded } = useAuth();
+  const { t } = useLanguage();
   const features = [
     {
       title: "AI Crop Disease Detection",
@@ -117,7 +119,7 @@ export default function LandingPage() {
                 className="flex items-center gap-1.5 rounded-xl bg-emerald-800 px-3 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-900 transition-colors"
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Dashboard</span>
+                <span className="hidden sm:inline">{t("landingGoToDashboard")}</span>
               </Link>
             ) : (
               <>
@@ -125,13 +127,13 @@ export default function LandingPage() {
                   href="/login"
                   className="flex items-center gap-2 rounded-xl border border-stone-200/90 bg-white px-3 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-100/80 hover:text-stone-900 transition-colors"
                 >
-                  Sign In
+                  {t("landingSignIn")}
                 </Link>
                 <Link
                   href="/signup"
                   className="rounded-xl bg-emerald-800 px-3 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-900 transition-colors"
                 >
-                  Get Started
+                  {t("landingGetStarted")}
                 </Link>
               </>
             )}
@@ -148,11 +150,11 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-stone-900 leading-[1.15]">
-            Intelligent Crop Health & Smart Agriculture
+            {t("landingHeroTitle")}
           </h1>
 
           <p className="text-base sm:text-lg text-stone-600 leading-relaxed max-w-2xl mx-auto">
-            KrishiDrishti combines deep learning computer vision, IoT soil hydrology, agro-weather microclimate models, and agentic farm advising into one unified agricultural intelligence ecosystem.
+            {t("landingHeroDesc")}
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -163,7 +165,7 @@ export default function LandingPage() {
                   className="flex items-center gap-2 rounded-xl bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-900 transition-all active:scale-[0.99]"
                 >
                   <LayoutDashboard className="h-4 w-4" />
-                  <span>Go to Dashboard</span>
+                  <span>{t("landingGoToDashboard")}</span>
                 </Link>
                 <UserManualDownload variant="hero" />
               </>
@@ -174,13 +176,13 @@ export default function LandingPage() {
                   className="flex items-center gap-2 rounded-xl bg-emerald-800 px-6 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-900 transition-all active:scale-[0.99]"
                 >
                   <ScanLine className="h-4 w-4" />
-                  <span>Get Started Free</span>
+                  <span>{t("landingGetStarted")}</span>
                 </Link>
                 <Link
                   href="/login"
                   className="flex items-center gap-2 rounded-xl border border-stone-300 bg-white px-6 py-3.5 text-sm font-semibold text-stone-800 shadow-xs hover:bg-stone-50 transition-all"
                 >
-                  <span>Sign In</span>
+                  <span>{t("landingSignIn")}</span>
                   <ArrowRight className="h-4 w-4 text-stone-500" />
                 </Link>
                 <UserManualDownload variant="hero" />
@@ -247,10 +249,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center max-w-2xl mx-auto mb-14 space-y-2">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">
-              Complete Agricultural Intelligence Ecosystem
+              {t("landingFeaturesTitle")}
             </h2>
             <p className="text-xs sm:text-sm text-stone-600">
-              Modular agricultural intelligence platform with pluggable FastAPI backend contracts and responsive edge design.
+              {t("landingFeaturesDesc")}
             </p>
           </div>
 
@@ -283,7 +285,7 @@ export default function LandingPage() {
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-stone-100 flex items-center text-xs font-semibold text-emerald-800 group-hover:translate-x-1 transition-transform">
-                    <span>Explore Module</span>
+                    <span>{t("landingExploreModule")}</span>
                     <ArrowRight className="h-3.5 w-3.5 ml-1" />
                   </div>
                 </Link>
@@ -298,10 +300,10 @@ export default function LandingPage() {
         <div className="rounded-3xl bg-stone-900 text-white p-8 sm:p-14 text-center space-y-6 shadow-xl relative overflow-hidden">
           <div className="max-w-2xl mx-auto space-y-3 relative z-10">
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
-              Ready to Empower Agricultural Productivity?
+              {t("landingCtaTitle")}
             </h2>
             <p className="text-xs sm:text-sm text-stone-300 leading-relaxed">
-              Test our trained computer vision leaf pathology model or explore the multi-modal agentic agricultural briefing.
+              {t("landingCtaDesc")}
             </p>
 
             <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
@@ -312,7 +314,7 @@ export default function LandingPage() {
                     className="flex items-center gap-2 rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-md transition-all"
                   >
                     <LayoutDashboard className="h-4 w-4" />
-                    Go to Dashboard
+                    {t("landingGoToDashboard")}
                   </Link>
                   <EvaluatorManualDownload variant="hero" />
                 </>
@@ -322,13 +324,13 @@ export default function LandingPage() {
                     href="/signup"
                     className="rounded-xl bg-emerald-600 px-6 py-3.5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-md transition-all"
                   >
-                    Create Free Account
+                    {t("landingCreateAccount")}
                   </Link>
                   <Link
                     href="/login"
                     className="rounded-xl border border-stone-700 bg-stone-800 px-6 py-3.5 text-sm font-semibold text-white hover:bg-stone-700 transition-all"
                   >
-                    Sign In
+                    {t("landingSignIn")}
                   </Link>
                 </>
               )}
@@ -363,7 +365,7 @@ export default function LandingPage() {
             <span className="hidden sm:inline">Intelligent Crop Health & Smart Agriculture</span>
           </Link>
           <div className="flex items-center gap-4">
-            <span>Empowering Farmers with Artificial Intelligence</span>
+            <span>{t("landingFooterTagline")}</span>
             <button
               type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
@@ -371,7 +373,7 @@ export default function LandingPage() {
               title="Back to top"
             >
               <ArrowUp className="h-3.5 w-3.5" />
-              <span>Back to Top</span>
+              <span>{t("landingBackToTop")}</span>
             </button>
           </div>
         </div>

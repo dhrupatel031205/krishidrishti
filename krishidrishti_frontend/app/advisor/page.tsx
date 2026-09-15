@@ -17,8 +17,10 @@ import {
   Brain,
 } from "lucide-react";
 import { DownloadReportButton } from "@/components/common/DownloadReportButton";
+import { useLanguage } from "@/lib/context/LanguageContext";
 
 export default function AdvisorPage() {
+  const { t } = useLanguage();
   const [briefings, setBriefings] = useState<AdvisoryBriefing[]>([]);
   const [heroTitle, setHeroTitle] = useState("Loading farm briefing...");
   const [heroDescription, setHeroDescription] = useState("");
@@ -59,12 +61,12 @@ export default function AdvisorPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
                 <Brain className="h-6 w-6 text-emerald-700" />
-                Agentic Agricultural Advisor
+                {t("advisorTitle")}
               </h1>
               <SimulationBadge />
             </div>
             <p className="mt-1 text-sm text-stone-500">
-              Autonomous reasoning engine synthesizing multi-modal signals: leaf pathology, radar precipitation, sensor hydrology, and crop market windows.
+              {t("advisorDesc")}
             </p>
           </div>
           {briefings.length > 0 && (
@@ -90,20 +92,20 @@ export default function AdvisorPage() {
         <div className="rounded-2xl border border-stone-800 bg-stone-900 p-6 sm:p-8 text-white shadow-md">
           <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-emerald-400 font-semibold mb-2">
             <Sparkles className="h-4 w-4" />
-            <span>Today's Farm Briefing (06:00 AM Synthesis)</span>
+            <span>{t("todaysFarmBriefing")}</span>
           </div>
           <h2 className="text-lg sm:text-2xl font-bold tracking-tight break-words">
             {heroTitle}
           </h2>
           <p className="mt-2 text-xs sm:text-sm text-stone-300 max-w-2xl leading-relaxed">
-            {heroDescription || "The reasoning engine is synthesizing multi-modal signals from your farm sensors, weather forecast, and crop diagnosis history."}
+            {heroDescription || t("advisorFallbackDesc")}
           </p>
         </div>
 
         {/* Briefings List */}
         <div className="space-y-4">
           <h3 className="text-sm font-semibold text-stone-900">
-            Ranked Operational Recommendations
+            {t("rankedRecommendations")}
           </h3>
 
           <div className="space-y-4">
@@ -126,7 +128,7 @@ export default function AdvisorPage() {
                           briefing.priority
                         )}`}
                       >
-                        {briefing.priority} Priority
+                        {briefing.priority} {t("priority")}
                       </span>
                       <h4 className="text-sm sm:text-base font-bold text-stone-900">
                         {briefing.title}
@@ -141,14 +143,14 @@ export default function AdvisorPage() {
                     {briefing.status === "acknowledged" ? (
                       <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        Acknowledged
+                        {t("acknowledged")}
                       </span>
                     ) : (
                       <button
                         onClick={() => handleAcknowledge(briefing.id)}
                         className="rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-stone-800"
                       >
-                        Acknowledge Action
+                        {t("acknowledgeAction")}
                       </button>
                     )}
                   </div>
@@ -156,7 +158,7 @@ export default function AdvisorPage() {
 
                 <div className="mt-4 rounded-xl bg-stone-50 p-3.5 border border-stone-200/80 text-xs">
                   <div className="font-semibold text-stone-800 mb-1">
-                    Recommended Action:
+                    {t("recommendedAction")}
                   </div>
                   <p className="text-stone-700 leading-relaxed">{briefing.recommendedAction}</p>
                 </div>
@@ -164,10 +166,10 @@ export default function AdvisorPage() {
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-stone-500 pt-2 border-t border-stone-100">
                   <div className="flex items-center gap-2">
                     <Layers className="h-3.5 w-3.5 text-stone-400" />
-                    <span>Signal Inputs: {briefing.dataSources.join(" • ")}</span>
+                    <span>{t("signalInputs")}: {briefing.dataSources.join(" • ")}</span>
                   </div>
                   <span className="font-medium text-emerald-800">
-                    Impact: {briefing.estimatedImpact}
+                    {t("impact")}: {briefing.estimatedImpact}
                   </span>
                 </div>
               </div>

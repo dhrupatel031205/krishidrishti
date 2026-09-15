@@ -27,8 +27,10 @@ import {
   Legend,
 } from "recharts";
 import { DownloadReportButton } from "@/components/common/DownloadReportButton";
+import { useLanguage } from "@/lib/context/LanguageContext";
 
 export default function MonitoringPage() {
+  const { t } = useLanguage();
   const [data, setData] = useState<SensorDashboardData | null>(null);
   const [isSimulatedMode, setIsSimulatedMode] = useState(true);
 
@@ -63,12 +65,12 @@ export default function MonitoringPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
                 <Activity className="h-6 w-6 text-emerald-700" />
-                IoT Sensor Telemetry & Field Nodes
+                {t("monitoringTitle")}
               </h1>
               {isSimulatedMode && <SimulationBadge />}
             </div>
             <p className="mt-1 text-sm text-stone-500">
-              Live telemetry from LoRaWAN field probes, soil capacitive sensors, and canopy weather nodes.
+              {t("monitoringDesc")}
             </p>
           </div>
 
@@ -77,7 +79,7 @@ export default function MonitoringPage() {
               onClick={loadData}
               className="text-xs font-semibold rounded-xl border border-stone-300 bg-white px-3 py-2 text-stone-700 shadow-xs hover:bg-stone-50"
             >
-              Mode: {isSimulatedMode ? "Simulated Sensors" : "Hardware LoRa Gateway"}
+              Mode: {isSimulatedMode ? t("simulatedSensors") : t("hardwareGateway")}
             </button>
             {data && (
               <DownloadReportButton
@@ -142,9 +144,9 @@ export default function MonitoringPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold text-stone-900">
-                Multi-Sensor Telemetry Over Time
+                {t("multiSensorTelemetry")}
               </h3>
-              <p className="text-xs text-stone-500">Temperature, relative humidity, and moisture correlation</p>
+              <p className="text-xs text-stone-500">{t("telemetryDesc")}</p>
             </div>
           </div>
 

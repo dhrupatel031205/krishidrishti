@@ -8,6 +8,7 @@ import {
   Leaf, Award, Droplets, FlaskConical, Sprout, Zap, RefreshCw, AlertTriangle, CheckCircle2,
 } from "lucide-react";
 import { DownloadReportButton } from "@/components/common/DownloadReportButton";
+import { useLanguage } from "@/lib/context/LanguageContext";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -36,6 +37,7 @@ const DEFAULT_FORM = {
 };
 
 export default function SustainabilityPage() {
+  const { t } = useLanguage();
   const [form, setForm] = useState(DEFAULT_FORM);
   const [report, setReport] = useState<ReportState | null>(null);
   const [loading, setLoading] = useState(false);
@@ -172,7 +174,7 @@ export default function SustainabilityPage() {
               <SimulationBadge />
             </div>
             <p className="mt-1 text-sm text-stone-500">
-              Enter your actual resource usage to compute a live sustainability score from the backend engine.
+              {t("sustainabilityDesc")}
             </p>
           </div>
           {report && (
@@ -201,11 +203,6 @@ export default function SustainabilityPage() {
             <h2 className="font-semibold text-stone-900 text-sm mb-4 flex items-center gap-2">
               <FlaskConical className="h-4 w-4 text-emerald-700" />
               Resource Usage Inputs
-            </h2>
-
-            <form onSubmit={calculate} className="space-y-4 text-xs">
-              <div className="space-y-3 pb-3 border-b border-stone-100">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-400">Water</p>
                 <div>
                   <label className="block font-medium text-stone-700 mb-1">
                     Water Used (Liters): <span className="text-sky-700 font-bold">{form.water_used_liters.toLocaleString()}</span>
@@ -257,7 +254,7 @@ export default function SustainabilityPage() {
               </div>
 
               <p className="text-[11px] text-stone-400 italic">
-                Crop health is fetched live from the IoT sensor feed.
+                {t("cropHealthLive")}
               </p>
 
               <button
@@ -266,9 +263,9 @@ export default function SustainabilityPage() {
                 className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-700 py-3 font-semibold text-white hover:bg-emerald-800 transition-colors text-xs shadow-xs cursor-pointer disabled:opacity-60"
               >
                 {loading ? (
-                  <><RefreshCw className="h-4 w-4 animate-spin" /> Calculating...</>
+                  <><RefreshCw className="h-4 w-4 animate-spin" /> {t("calculating")}</>
                 ) : (
-                  <><Leaf className="h-4 w-4" /> Calculate Score</>
+                  <><Leaf className="h-4 w-4" /> {t("calculateScore")}</>
                 )}
               </button>
             </form>
@@ -290,9 +287,9 @@ export default function SustainabilityPage() {
             {!report && !loading && !error && (
               <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center">
                 <Leaf className="h-10 w-10 text-stone-300 mx-auto mb-3" />
-                <h3 className="font-semibold text-stone-800 text-sm">Awaiting Input</h3>
+                <h3 className="font-semibold text-stone-800 text-sm">{t("awaitingInputTitle")}</h3>
                 <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
-                  Enter your water and fertilizer usage on the left, then click Calculate Score.
+                  {t("awaitingInputDesc")}
                 </p>
               </div>
             )}
@@ -305,9 +302,7 @@ export default function SustainabilityPage() {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-800">
                         <Award className="h-4 w-4" />
-                        <span>Overall Ecological Farm Rating</span>
-                      </div>
-                      <div className="flex flex-wrap items-baseline gap-3">
+                        <span>{t("overallEcoRating")}</span>
                         <span className="text-5xl font-black tracking-tight text-emerald-900">
                           {report.overallScore}
                         </span>
@@ -328,18 +323,18 @@ export default function SustainabilityPage() {
 
                     <div className="grid grid-cols-2 gap-4 border-t sm:border-t-0 sm:border-l border-emerald-200/85 pt-4 sm:pt-0 sm:pl-6">
                       <div>
-                        <span className="text-xs text-stone-500 block">Water Saved</span>
+                        <span className="text-xs text-stone-500 block">{t("waterSaved")}</span>
                         <span className="text-xl font-bold text-stone-900">
                           {report.waterSavedLiters.toLocaleString()} L
                         </span>
-                        <span className="text-[11px] text-emerald-700 font-medium block">vs Your Usage</span>
+                        <span className="text-[11px] text-emerald-700 font-medium block">{t("vsYourUsage")}</span>
                       </div>
                       <div>
-                        <span className="text-xs text-stone-500 block">Carbon Offset Est.</span>
+                        <span className="text-xs text-stone-500 block">{t("carbonOffset")}</span>
                         <span className="text-xl font-bold text-stone-900">
                           {report.carbonOffsetKg.toLocaleString()} kg
                         </span>
-                        <span className="text-[11px] text-emerald-700 font-medium block">CO₂ Equivalent</span>
+                        <span className="text-[11px] text-emerald-700 font-medium block">{t("co2Equivalent")}</span>
                       </div>
                     </div>
                   </div>

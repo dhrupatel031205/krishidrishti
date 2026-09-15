@@ -15,6 +15,7 @@ import {
   ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import { DownloadReportButton } from "@/components/common/DownloadReportButton";
+import { useLanguage } from "@/lib/context/LanguageContext";
 
 const GROWTH_STAGES = [
   { value: "seedling",   label: "Seedling",   threshold: 40, desc: "0–2 weeks" },
@@ -24,6 +25,7 @@ const GROWTH_STAGES = [
 ];
 
 export default function IrrigationPage() {
+  const { t } = useLanguage();
   const [data, setData] = useState<IrrigationStatus | null>(null);
   const [growthStage, setGrowthStage] = useState("vegetative");
   const [loading, setLoading] = useState(false);
@@ -102,12 +104,12 @@ export default function IrrigationPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
                 <Droplets className="h-6 w-6 text-sky-600" />
-                Smart Irrigation Intelligence
+                {t("irrigationIntelligence")}
               </h1>
               <SimulationBadge />
             </div>
             <p className="mt-1 text-sm text-stone-500">
-              Precision soil moisture management with real-time sensor telemetry and rain-aware scheduling.
+              {t("irrigationIntelligenceDesc")}
             </p>
           </div>
 
@@ -147,9 +149,9 @@ export default function IrrigationPage() {
               }`}
             >
               {irrigationActive ? (
-                <><PauseCircle className="h-4 w-4" /> Halt Solenoid ({irrigationTimer}s)</>
+                <><PauseCircle className="h-4 w-4" /> {t("haltSolenoid")} ({irrigationTimer}s)</>
               ) : (
-                <><PlayCircle className="h-4 w-4" /> Manual Cycle</>
+                <><PlayCircle className="h-4 w-4" /> {t("manualCycle")}</>
               )}
             </button>
           </div>
@@ -159,8 +161,8 @@ export default function IrrigationPage() {
         <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-xs">
           <div className="flex items-center gap-2 mb-3">
             <Sprout className="h-4 w-4 text-emerald-700" />
-            <span className="text-sm font-semibold text-stone-900">Crop Growth Stage</span>
-            <span className="text-xs text-stone-500">— threshold changes based on stage</span>
+            <span className="text-sm font-semibold text-stone-900">{t("cropGrowthStage")}</span>
+            <span className="text-xs text-stone-500">— {t("stageThresholdNote")}</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {GROWTH_STAGES.map((stage) => (
@@ -226,28 +228,28 @@ export default function IrrigationPage() {
             {/* Stat Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
-                title="Root Zone Moisture"
+                title={t("rootZoneMoisture")}
                 value={`${data.currentMoisture}%`}
                 subtitle={`Target: ${data.targetMoistureMin}% – ${data.targetMoistureMax}%`}
                 icon={Gauge}
                 accentColor="blue"
               />
               <StatCard
-                title="Water Required"
+                title={t("waterRequired")}
                 value={data.waterRequirementLiters > 0 ? `${data.waterRequirementLiters.toLocaleString()} L` : "None"}
                 subtitle={`Stage: ${currentStage.label} (${currentStage.threshold}% threshold)`}
                 icon={Droplets}
                 accentColor="green"
               />
               <StatCard
-                title="Next Cycle"
+                title={t("nextCycle")}
                 value={data.nextIrrigationTime}
                 subtitle={data.status === "needs_water" ? "Irrigation recommended" : "No action needed"}
                 icon={Clock}
                 accentColor="amber"
               />
               <StatCard
-                title="Valve Status"
+                title={t("valveStatus")}
                 value={irrigationActive ? "🟢 Running" : statusLabel}
                 subtitle={`Last reading: ${data.lastWatered}`}
                 icon={Waves}
@@ -260,8 +262,8 @@ export default function IrrigationPage() {
               {/* Circular Gauge */}
               <div className="rounded-2xl border border-stone-200/80 bg-white p-6 shadow-xs flex flex-col justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-stone-900 mb-1">Soil Moisture Gauge</h3>
-                  <p className="text-xs text-stone-500 mb-6">Capacitive sensor at 30cm depth</p>
+                  <h3 className="text-sm font-semibold text-stone-900 mb-1">{t("soilMoistureGauge")}</h3>
+                  <p className="text-xs text-stone-500 mb-6">{t("capacitiveDepth")}</p>
                   <div className="flex flex-col items-center">
                     <div className="relative flex h-36 w-36 items-center justify-center rounded-full border-8 border-stone-100 bg-sky-50/40">
                       <div
@@ -283,7 +285,7 @@ export default function IrrigationPage() {
                 }`}>
                   <div className="font-semibold flex items-center gap-1.5">
                     <AlertTriangle className="h-3.5 w-3.5" />
-                    {data.status === "needs_water" ? "Below threshold" : "Moisture optimal"}
+                    {data.status === "needs_water" ? t("belowThreshold") : t("moistureOptimal")}
                   </div>
                   <p className="mt-1 text-[11px] leading-relaxed">
                     {data.status === "needs_water"
@@ -297,8 +299,8 @@ export default function IrrigationPage() {
               <div className="rounded-2xl border border-stone-200/80 bg-white p-6 shadow-xs lg:col-span-2">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-stone-900">Moisture Trend</h3>
-                    <p className="text-xs text-stone-500">Last 6 sensor readings · 10 min intervals</p>
+                    <h3 className="text-sm font-semibold text-stone-900">{t("moistureTrend")}</h3>
+                    <p className="text-xs text-stone-500">{t("lastReadings")}</p>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-stone-500">
                     <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-sky-600 inline-block" /> Moisture</span>

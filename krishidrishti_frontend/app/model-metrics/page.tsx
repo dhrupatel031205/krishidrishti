@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, BarChart, Bar, Cell,
 } from "recharts";
 import { Brain, TrendingUp, BarChart2, Grid3x3, Info } from "lucide-react";
+import { useLanguage } from "@/lib/context/LanguageContext";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
@@ -111,6 +112,7 @@ const STATIC_METRICS: ModelMetrics = {
 };
 
 export default function ModelMetricsPage() {
+  const { t } = useLanguage();
   const [metrics, setMetrics] = useState<ModelMetrics>(STATIC_METRICS);
   const [activeTab, setActiveTab] = useState<"loss" | "f1" | "confusion" | "classes">("loss");
 
@@ -162,24 +164,24 @@ export default function ModelMetricsPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-stone-900 flex items-center gap-2">
               <Brain className="h-6 w-6 text-emerald-700" />
-              Model Evaluation Metrics
+              {t("modelMetricsTitle")}
             </h1>
             <span className="text-[11px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
               EfficientNet-B3
             </span>
           </div>
           <p className="mt-1 text-sm text-stone-500">
-            Training diagnostics for the core crop disease detection model trained on PlantVillage dataset.
+            {t("modelMetricsDesc")}
           </p>
         </div>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Model Architecture", value: metrics.model },
-            { label: "Dataset", value: `${metrics.dataset} (${metrics.num_classes} classes)` },
-            { label: "Total Images", value: metrics.total_images.toLocaleString() },
-            { label: "Final Val Accuracy", value: `${(metrics.final_val_accuracy * 100).toFixed(2)}%` },
+            { label: t("modelArchitecture"), value: metrics.model },
+            { label: t("dataset"), value: `${metrics.dataset} (${metrics.num_classes} classes)` },
+            { label: t("totalImages"), value: metrics.total_images.toLocaleString() },
+            { label: t("finalValAccuracy"), value: `${(metrics.final_val_accuracy * 100).toFixed(2)}%` },
           ].map((card) => (
             <div key={card.label} className="rounded-xl border border-stone-200 bg-white p-4 shadow-xs">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">{card.label}</p>
@@ -192,7 +194,7 @@ export default function ModelMetricsPage() {
         <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-xs">
           <h3 className="text-sm font-semibold text-stone-900 mb-3 flex items-center gap-2">
             <Info className="h-4 w-4 text-emerald-700" />
-            Training Configuration
+            {t("trainingConfig")}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
             {[
@@ -217,10 +219,10 @@ export default function ModelMetricsPage() {
         <div className="rounded-2xl border border-stone-200 bg-white shadow-xs overflow-hidden">
           <div className="flex overflow-x-auto border-b border-stone-200 bg-stone-50 scrollbar-none">
             {[
-              { id: "loss",      label: "Loss",         icon: TrendingUp },
-              { id: "f1",        label: "Macro-F1",     icon: TrendingUp },
-              { id: "confusion", label: "Confusion",    icon: Grid3x3 },
-              { id: "classes",   label: "Per-Class",    icon: BarChart2 },
+              { id: "loss",      label: t("lossTab"),      icon: TrendingUp },
+              { id: "f1",        label: t("f1Tab"),         icon: TrendingUp },
+              { id: "confusion", label: t("confusionTab"),  icon: Grid3x3 },
+              { id: "classes",   label: t("perClassTab"),   icon: BarChart2 },
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}

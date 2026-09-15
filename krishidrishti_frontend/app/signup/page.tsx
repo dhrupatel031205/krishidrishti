@@ -1,6 +1,9 @@
+"use client";
 import { SignUp } from "@clerk/nextjs";
+import { useLanguage } from "@/lib/context/LanguageContext";
 
 export default function SignupPage() {
+  const { t } = useLanguage();
   return (
     <div className="min-h-screen bg-[#fbfaf8] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md flex flex-col items-center gap-6">
@@ -11,7 +14,7 @@ export default function SignupPage() {
           <span className="text-2xl font-extrabold tracking-tight text-stone-900">
             Krishi<span className="text-emerald-700">Drishti</span>
           </span>
-          <p className="text-xs text-stone-500 font-medium mt-1">Intelligent Crop Health Platform</p>
+          <p className="text-xs text-stone-500 font-medium mt-1">{t("landingIntelligentCrop")}</p>
         </div>
         <SignUp
           routing="hash"
