@@ -87,8 +87,12 @@ export async function predictCropDisease(fileOrSampleId: File | string): Promise
   const response = await fetch(`${API_BASE_URL}/api/predict`, { method: "POST", body: formData, headers: getAuthHeaders() });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
-    const msg = err?.detail?.message || err?.detail || `Inference engine failed with status ${response.status}`;
-    throw new Error(msg);
+    // detail can be a string or an object like { type, message }
+    const detail = err?.detail;
+    const msg =
+      (typeof detail === "object" && detail !== null ? detail.message : detail) ||
+      `Inference engine failed with status ${response.status}`;
+    throw new Error(String(msg));
   }
   return response.json();
 }
