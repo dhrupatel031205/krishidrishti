@@ -12,14 +12,52 @@ interface ImageUploaderProps {
   validationError?: string | null;
 }
 
+// Client-side pre-flight checks before sending to backend
+function validateImageFile(file: File): string | null {
+  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  const MIN_SIZE = 5 * 1024;          // 5KB — reject blank/corrupt files
+  const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return `Unsupported format "${file.type || 'unknown'}". Please upload a JPG, PNG, or WEBP image.`;
+  }
+  if (file.size > MAX_SIZE) {
+    return `File is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum allowed size is 10 MB.`;
+  }
+  if (file.size < MIN_SIZE) {
+    return "File appears to be blank or corrupted (under 5 KB). Please upload a clear leaf photo.";
+  }
+  return null;
+}
+
 export function ImageUploader({ onAnalyze, isLoading, validationError }: ImageUploaderProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
+  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+    setClientError(null);
+
+    if (rejectedFiles && rejectedFiles.length > 0) {
+      const reason = rejectedFiles[0]?.errors?.[0];
+      if (reason?.code === "file-too-large") {
+        setClientError("File exceeds 10 MB limit. Please compress or resize the image.");
+      } else if (reason?.code === "file-invalid-type") {
+        setClientError("Invalid file type. Please upload a JPG, PNG, or WEBP image.");
+      } else {
+        setClientError("File rejected. Please upload a valid crop leaf image.");
+      }
+      return;
+    }
+
     if (acceptedFiles && acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
+      const err = validateImageFile(file);
+      if (err) {
+        setClientError(err);
+        return;
+      }
       setSelectedFile(file);
       setSelectedSampleId(null);
       setPreviewUrl(URL.createObjectURL(file));
@@ -34,6 +72,7 @@ export function ImageUploader({ onAnalyze, isLoading, validationError }: ImageUp
   });
 
   const handleSelectSample = (sample: typeof sampleLeaves[0]) => {
+    setClientError(null);
     setSelectedFile(null);
     setSelectedSampleId(sample.id);
     setPreviewUrl(sample.image);
@@ -43,9 +82,11 @@ export function ImageUploader({ onAnalyze, isLoading, validationError }: ImageUp
     setSelectedFile(null);
     setSelectedSampleId(null);
     setPreviewUrl(null);
+    setClientError(null);
   };
 
   const handleStartAnalysis = () => {
+    setClientError(null);
     if (selectedSampleId && previewUrl) {
       onAnalyze(selectedSampleId, previewUrl);
     } else if (selectedFile && previewUrl) {
@@ -53,20 +94,27 @@ export function ImageUploader({ onAnalyze, isLoading, validationError }: ImageUp
     }
   };
 
+  // Show client error first, then backend validation error
+  const displayError = clientError || validationError;
+
   return (
     <div className="space-y-6">
 
-      {/* Validation rejection banner */}
-      {validationError && (
+      {/* Validation error banner */}
+      {displayError && (
         <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
           <AlertCircle className="h-5 w-5 shrink-0 text-rose-500 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-rose-800">Invalid Image — Not a Crop Leaf</p>
-            <p className="mt-0.5 text-xs text-rose-700 leading-relaxed">{validationError}</p>
-            <p className="mt-2 text-xs text-rose-600 font-medium">
-              ✅ Accepted: crop leaves, plant foliage, diseased leaf close-ups<br />
-              ❌ Rejected: people, animals, buildings, cars, landscapes, blank images
+            <p className="text-sm font-semibold text-rose-800">
+              {clientError ? "Invalid File" : "Invalid Image — Not a Crop Leaf"}
             </p>
+            <p className="mt-0.5 text-xs text-rose-700 leading-relaxed">{displayError}</p>
+            {!clientError && (
+              <p className="mt-2 text-xs text-rose-600 font-medium">
+                ✅ Accepted: crop leaves, plant foliage, diseased leaf close-ups<br />
+                ❌ Rejected: people, animals, buildings, cars, landscapes, blank images
+              </p>
+            )}
           </div>
         </div>
       )}
